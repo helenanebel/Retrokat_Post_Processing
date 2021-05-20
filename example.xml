@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='us-ascii'?>
+<modsCollection xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.loc.gov/mods/v3"
+                xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-2.xsd">    <mods>
+        <titleInfo>
+            <title />
+        </titleInfo>
+        <typeOfResource>text</typeOfResource>
+        <genre authority="local">journalArticle</genre>
+        <identifier type="doi" />
+        <location>
+            <url usage="primary display" dateLastAccessed="2021-04-21 07:57:19" />
+        </location>
+        <abstract />
+        <language>
+            <languageTerm type="text" />
+        </language>
+        <recordInfo>
+            <recordContentSource>https://www.jstor.org</recordContentSource>
+        </recordInfo>
+        <relatedItem type="host">
+            <genre authority="marcgt">journal</genre>
+            <part>
+                <detail type="volume">
+                    <number />
+                </detail>
+                <detail type="issue">
+                    <number />
+                </detail>
+                <extent unit="pages">
+                    <start />
+                    <end />
+                </extent>
+            </part>
+            <originInfo>
+                <dateIssued />
+                <issuance>continuing</issuance>
+            </originInfo>
+            <identifier type="issn" />
+            <titleInfo>
+                <title />
+            </titleInfo>
+        </relatedItem>
+    <subject><topic /></subject></mods>
+</modsCollection>

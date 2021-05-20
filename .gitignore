@@ -1,0 +1,10 @@
+jstor_metadata
+result_files
+volume_files
+*_post_process.xml
+*_proper.xml
+example_filled.xml
+example_text.xml
+*.csv
+*.json
+!present_records.json
