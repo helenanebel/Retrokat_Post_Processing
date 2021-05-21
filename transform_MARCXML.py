@@ -77,7 +77,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: tuple[int
     discarded_nr = 0
     proper_nr = 0
     volume_list = [str(year) for year in range(volumes_to_catalogue[0], volumes_to_catalogue[1] + 1)]
-    with open('present_records.json', 'r') as present_record_file:
+    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/present_records.json', 'r') as present_record_file:
         present_record_list = json.load(present_record_file)
         present_record_lookup_years = [present_record['year'] for present_record in present_record_list[zeder_id]]
     post_process_tree = ElementTree.parse('marcxml_empty.xml')
@@ -106,6 +106,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: tuple[int
             pagination = get_subfield(record, '936', 'h')
             if '-' in pagination:
                 fpage, lpage = re.findall(r'(\d+)-(\d+)', pagination)[0]
+                print(fpage, lpage)
                 if fpage == lpage:
                     pagination_tag = \
                         record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
@@ -134,6 +135,12 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: tuple[int
                 discarded_nr += 1
                 continue
             elif append_to_postprocess:
+                form_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="655"][@ind2="7"]'
+                                       '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
+                if form_tag is not None:
+                    if form_tag.text == 'Rezension':
+                        create_marc_field(record, {'tag': '650', 'ind1': ' ', 'ind2': '4',
+                                                   'subfields': {'a': 'RezensionstagPica'}})
                 post_process_root.append(record)
                 post_process_nr += 1
             else:
@@ -142,8 +149,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: tuple[int
                 proper_root.append(record)
                 proper_nr += 1
 
-    proper_tree.write(zeder_id + '_proper.xml', xml_declaration=True)
-    post_process_tree.write(zeder_id + '_post_process.xml', xml_declaration=True)
+    proper_tree.write(zeder_id + '_proper.xml', encoding='utf-8', xml_declaration=True)
+    post_process_tree.write(zeder_id + '_post_process.xml', encoding='utf-8', xml_declaration=True)
     print('missing doublets:', present_record_list[zeder_id])
     print('proper:', proper_nr)
     print('post_process:', post_process_nr)
