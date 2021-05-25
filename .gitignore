@@ -1,6 +1,8 @@
 jstor_metadata
 result_files
 volume_files
+result_files_to_process
+result_files_processed
 *.xml
 !example.xml
 !marcxml_empty.xml
