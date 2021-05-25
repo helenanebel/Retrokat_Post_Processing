@@ -27,6 +27,8 @@ def check_and_split_in_issues():
     issue_root = issue_tree.getroot()
     all_title_beginnings = {}
     missing_authors = []
+    for file in os.listdir('volume_files'):
+        os.unlink('volume_files/' + file)
     for file in os.listdir('result_files'):
         all_issues = []
         ElementTree.register_namespace('', "http://www.loc.gov/MARC21/slim")
@@ -36,9 +38,12 @@ def check_and_split_in_issues():
         paginations = ['-']
         reviews = 0
         current_issue = 'first'
+        records = [record for record in records]
         for record in records:
             new_issue = str(get_subfield(record, '936', 'd').zfill(3)) + \
                         str(get_subfield(record, '936', 'e').zfill(2)).replace('/', '-')
+            if records.index(record) == (len(records) - 1):
+                issue_tree.write('volume_files/' + current_issue + '.xml', xml_declaration=True)
             if new_issue not in all_issues:
                 with open('volume_files/' + current_issue + '.xml', 'w') as xml_file:
                     xml_file.close()
@@ -105,13 +110,16 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: tuple[int
                                            'subfields': {'a': retrieve_sign, '2': 'LOK'}})
             pagination = get_subfield(record, '936', 'h')
             if '-' in pagination:
-                fpage, lpage = re.findall(r'(\d+)-(\d+)', pagination)[0]
-                print(fpage, lpage)
-                if fpage == lpage:
-                    pagination_tag = \
-                        record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
-                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
-                    pagination_tag.text = fpage
+                if re.findall(r'(\d+)-(\d+)', pagination):
+                    fpage, lpage = re.findall(r'(\d+)-(\d+)', pagination)[0]
+                    if fpage == lpage:
+                        pagination_tag = \
+                            record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
+                                        '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
+                        pagination_tag.text = fpage
+                else:
+                    print(get_subfield(record, '856', 'u'))
+                    discard = True
             if pagination is None:
                 append_to_postprocess = True
             if present_record_list[zeder_id]:
