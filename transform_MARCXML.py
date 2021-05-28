@@ -108,6 +108,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: tuple[int
             for retrieve_sign in ['ixzs', 'ixrk']:
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ', 
                                            'subfields': {'a': retrieve_sign, '2': 'LOK'}})
+            create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
+                                       'subfields': {'a': 'mteo'}})
             pagination = get_subfield(record, '936', 'h')
             if '-' in pagination:
                 if re.findall(r'(\d+)-(\d+)', pagination):
