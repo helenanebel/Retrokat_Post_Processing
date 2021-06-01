@@ -39,7 +39,7 @@ def get_subfield(record, tag, subfield_code):
     return record.find(searchstring).text
 
 
-def check_and_split_in_issues():
+def check_and_split_in_issues(zeder_id):
     issue_tree = ElementTree.parse('marcxml_empty.xml')
     issue_root = issue_tree.getroot()
     all_title_beginnings = {}
@@ -47,53 +47,55 @@ def check_and_split_in_issues():
     for file in os.listdir('volume_files'):
         os.unlink('volume_files/' + file)
     for file in os.listdir('result_files'):
-        all_issues = []
-        ElementTree.register_namespace('', "http://www.loc.gov/MARC21/slim")
-        result_tree = ElementTree.parse('result_files/' + file)
-        result_root = result_tree.getroot()
-        records = result_root.findall('.//{http://www.loc.gov/MARC21/slim}record')
-        paginations = ['-']
-        reviews = 0
-        current_issue = 'first'
-        records = [record for record in records]
-        for record in records:
-            new_issue = str(get_subfield(record, '936', 'd').zfill(3)) + \
-                        str(get_subfield(record, '936', 'e').zfill(2)).replace('/', '-')
-            if records.index(record) == (len(records) - 1):
-                issue_tree.write('volume_files/' + current_issue + '.xml', xml_declaration=True)
-            if new_issue not in all_issues:
-                with open('volume_files/' + current_issue + '.xml', 'w') as xml_file:
-                    xml_file.close()
-                issue_tree.write('volume_files/' + current_issue + '.xml', xml_declaration=True)
-                all_issues.append(new_issue)
-                issue_tree = ElementTree.parse('marcxml_empty.xml')
-                issue_root = issue_tree.getroot()
-                if not (len([pagination for pagination in paginations if '-' in pagination]) > (len(paginations)/3)):
-                    print(paginations)
-                    print(current_issue, 'has problem with pagination')
-                paginations = []
-                if (not reviews) and (not current_issue == 'first'):
-                    print(current_issue, 'has no reviews')
-                reviews = 0
-                current_issue = new_issue
-            title = get_subfield(record, '245', 'a')
-            if not record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="100"]'):
-                missing_authors.append(title)
-            title_beginning = ' '.join(title.split()[:2])
-            if title_beginning not in all_title_beginnings:
-                all_title_beginnings[title_beginning] = 1
-            else:
-                all_title_beginnings[title_beginning] += 1
-            if get_subfield(record, '655', 'a'):
-                reviews += 1
-            pagination = get_subfield(record, '936', 'h')
-            paginations.append(pagination)
-            issue_root.append(record)
+        if file == zeder_id + '.xml':
+            all_issues = []
+            ElementTree.register_namespace('', "http://www.loc.gov/MARC21/slim")
+            result_tree = ElementTree.parse('result_files/' + file)
+            result_root = result_tree.getroot()
+            records = result_root.findall('.//{http://www.loc.gov/MARC21/slim}record')
+            paginations = ['-']
+            reviews = 0
+            current_issue = 'first'
+            records = [record for record in records]
+            for record in records:
+                new_issue = str(get_subfield(record, '936', 'd').zfill(3)) + \
+                            str(get_subfield(record, '936', 'e').zfill(2)).replace('/', '-')
+                if records.index(record) == (len(records) - 1):
+                    issue_tree.write('volume_files/' + current_issue + '.xml', xml_declaration=True)
+                if new_issue not in all_issues:
+                    with open('volume_files/' + current_issue + '.xml', 'w') as xml_file:
+                        xml_file.close()
+                    issue_tree.write('volume_files/' + current_issue + '.xml', xml_declaration=True)
+                    all_issues.append(new_issue)
+                    issue_tree = ElementTree.parse('marcxml_empty.xml')
+                    issue_root = issue_tree.getroot()
+                    if not (len([pagination for pagination in paginations if '-' in pagination])
+                            > (len(paginations)/3)):
+                        print(paginations)
+                        print(current_issue, 'has problem with pagination')
+                    paginations = []
+                    if (not reviews) and (not current_issue == 'first'):
+                        print(current_issue, 'has no reviews')
+                    reviews = 0
+                    current_issue = new_issue
+                title = get_subfield(record, '245', 'a')
+                if not record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="100"]'):
+                    missing_authors.append(title)
+                title_beginning = ' '.join(title.split()[:2])
+                if title_beginning not in all_title_beginnings:
+                    all_title_beginnings[title_beginning] = 1
+                else:
+                    all_title_beginnings[title_beginning] += 1
+                if get_subfield(record, '655', 'a'):
+                    reviews += 1
+                pagination = get_subfield(record, '936', 'h')
+                paginations.append(pagination)
+                issue_root.append(record)
     print([beginning for beginning in all_title_beginnings if all_title_beginnings[beginning] > 3])
     print(missing_authors)
 
 
-def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: tuple[int, int]):
+def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int, int]):
     volumes_discarded = []
     post_process_nr = 0
     discarded_nr = 0
