@@ -4,6 +4,23 @@ import xml.etree.ElementTree as ElementTree
 import re
 
 
+def add_jstor_links(record, jstor_dict, year, volume, issue, pagination):
+    jstor_url = None
+    if year in jstor_dict:
+        if volume in jstor_dict[year]:
+            if issue:
+                if issue in jstor_dict[year][volume]:
+                    if pagination in jstor_dict[year][volume][issue]:
+                        jstor_url = jstor_dict[year][volume][issue][pagination]
+            else:
+                if pagination in jstor_dict[year][volume]:
+                    jstor_url = jstor_dict[year][volume][pagination]
+    if jstor_url:
+        create_marc_field(record, {'tag': '856', 'ind1': '4', 'ind2': '0',
+                                   'subfields': {'u': jstor_url, 'z': 'ZZ'}})
+    print('JSTOR-URL added:', jstor_url)
+
+
 def create_marc_field(record, field_dict: dict):
     new_datafield = ElementTree.SubElement(record, "{http://www.loc.gov/MARC21/slim}datafield",
                                            {'tag': field_dict['tag'], 'ind1': field_dict['ind1'],
@@ -110,6 +127,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: tuple[int
                                            'subfields': {'a': retrieve_sign, '2': 'LOK'}})
             create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                        'subfields': {'a': 'mteo'}})
+            volume = get_subfield(record, '936', 'd')
+            issue = get_subfield(record, '936', 'e')
             pagination = get_subfield(record, '936', 'h')
             if '-' in pagination:
                 if re.findall(r'(\d+)-(\d+)', pagination):
@@ -127,8 +146,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: tuple[int
             if present_record_list[zeder_id]:
                 delete_entries = []
                 if [year in present_record_lookup_years]:
-                    volume = get_subfield(record, '936', 'd')
-                    issue = get_subfield(record, '936', 'e')
                     for entry in [entry for entry in present_record_list[zeder_id] if entry['year'] == year]:
                         if (entry['volume'] == volume) and (entry['issue'] == issue):
                             title = get_subfield(record, '245', 'a')
@@ -154,6 +171,11 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: tuple[int
                 post_process_root.append(record)
                 post_process_nr += 1
             else:
+                if zeder_id + '.json' in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_csv'):
+                    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_csv/' + file, 'r',
+                              encoding="utf-8") as jstor_file:
+                        jstor_dict = json.load(jstor_file)
+                        add_jstor_links(record, jstor_dict, year, volume, pagination, issue)
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                            'subfields': {'a': 'zota', '2': 'LOK'}})
                 proper_root.append(record)
