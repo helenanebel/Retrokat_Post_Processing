@@ -148,7 +148,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     pagination_tag = \
                         record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
                                     '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
-                    pagination_tag.text = input('Bitte geben sie die Seitenzahl des Artikels ein: ')
+                    pagination_tag.text = input('Bitte geben Sie die Seitenzahl des Artikels ein: ')
             if pagination is None:
                 append_to_postprocess = True
             if zeder_id in present_record_list:
@@ -156,18 +156,19 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                 if [year in present_record_lookup_years]:
                     for entry in [entry for entry in present_record_list[zeder_id] if entry['year'] == year]:
                         if (entry['volume'] == volume) and (entry['issue'] == issue):
-                            title = get_subfield(record, '245', 'a')
-                            if '$' not in entry:
-                                found = re.match('^' + entry['title'], title, re.IGNORECASE)
-                            else:
-                                found = re.match(entry['title'], title, re.IGNORECASE)
-                            if found is not None:
-                                delete_entries.append(entry)
+                            if entry['title'] == '*all*':
+                                print('Alle Titel in', issue, volume, year, 'werden gelöscht.')
                                 discard = True
+                            else:
+                                title = get_subfield(record, '245', 'a')
+                                found = re.search(entry['title'], title, re.IGNORECASE)
+                                if found is not None:
+                                    delete_entries.append(entry)
+                                    discard = True
                     for entry in delete_entries:
                         present_record_list[zeder_id].remove(entry)
             for exclude_regex in exclude:
-                if re.match(exclude_regex, get_subfield(record, '245', 'a'), re.IGNORECASE):
+                if re.search(exclude_regex, get_subfield(record, '245', 'a'), re.IGNORECASE):
                     discard = True
             if discard:
                 discarded_nr += 1
@@ -200,3 +201,27 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     print('post_process:', post_process_nr)
     print('discard:', discarded_nr)
     print('volumes discarded:', volumes_discarded)
+
+    {"issue": "5", "volume": "38", "title": "23. Reception", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "22. Textual Criticism", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "21. language", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "Early Christianity", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "19.Graeco-Roman", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "18. Judaism", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "17.Revelation", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "16. Non-Pauline Letters", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "15. Pastoral Epistles", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "14. Philippians & Thessalonians", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "13. Ephesians, Colossians & Philemon", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "12. Galatians", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "11. Corinthians", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "10. Romans", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "9. Paul", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "8. John", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "7. Luke-Acts", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "6. Mark", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "5. Matthew", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "4. Gospels", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "3. Jesus", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "2. New Testaments Topics", "year": "2016"},
+    {"issue": "5", "volume": "38", "title": "1. New Testament General", "year": "2016"}
