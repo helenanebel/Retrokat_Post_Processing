@@ -103,7 +103,10 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     volume_list = [str(year) for year in range(volumes_to_catalogue[0], volumes_to_catalogue[1] + 1)]
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/present_records.json', 'r') as present_record_file:
         present_record_list = json.load(present_record_file)
-        present_record_lookup_years = [present_record['year'] for present_record in present_record_list[zeder_id]]
+        if zeder_id in present_record_list:
+            present_record_lookup_years = [present_record['year'] for present_record in present_record_list[zeder_id]]
+        else:
+            present_record_lookup_years = []
     post_process_tree = ElementTree.parse('marcxml_empty.xml')
     post_process_root = post_process_tree.getroot()
     proper_tree = ElementTree.parse('marcxml_empty.xml')
@@ -142,16 +145,22 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                         pagination_tag.text = fpage
                 else:
                     print(get_subfield(record, '856', 'u'))
-                    discard = True
+                    pagination_tag = \
+                        record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
+                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
+                    pagination_tag.text = input('Bitte geben sie die Seitenzahl des Artikels ein: ')
             if pagination is None:
                 append_to_postprocess = True
-            if present_record_list[zeder_id]:
+            if zeder_id in present_record_list:
                 delete_entries = []
                 if [year in present_record_lookup_years]:
                     for entry in [entry for entry in present_record_list[zeder_id] if entry['year'] == year]:
                         if (entry['volume'] == volume) and (entry['issue'] == issue):
                             title = get_subfield(record, '245', 'a')
-                            found = re.match('^' + entry['title'], title, re.IGNORECASE)
+                            if '$' not in entry:
+                                found = re.match('^' + entry['title'], title, re.IGNORECASE)
+                            else:
+                                found = re.match(entry['title'], title, re.IGNORECASE)
                             if found is not None:
                                 delete_entries.append(entry)
                                 discard = True
@@ -185,7 +194,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
 
     proper_tree.write(zeder_id + '_proper.xml', encoding='utf-8', xml_declaration=True)
     post_process_tree.write(zeder_id + '_post_process.xml', encoding='utf-8', xml_declaration=True)
-    print('missing doublets:', present_record_list[zeder_id])
+    if zeder_id in present_record_list:
+        print('missing doublets:', present_record_list[zeder_id])
     print('proper:', proper_nr)
     print('post_process:', post_process_nr)
     print('discard:', discarded_nr)
