@@ -17,7 +17,7 @@ def add_jstor_links(record, jstor_dict, year, volume, issue, pagination):
                     jstor_url = jstor_dict[year][volume][pagination]
     if jstor_url:
         create_marc_field(record, {'tag': '856', 'ind1': '4', 'ind2': '0',
-                                   'subfields': {'u': jstor_url, 'z': 'ZZ'}})
+                                   'subfields': {'u': [jstor_url], 'z': ['ZZ']}})
     print('JSTOR-URL added:', jstor_url)
 
 
@@ -25,10 +25,11 @@ def create_marc_field(record, field_dict: dict):
     new_datafield = ElementTree.SubElement(record, "{http://www.loc.gov/MARC21/slim}datafield",
                                            {'tag': field_dict['tag'], 'ind1': field_dict['ind1'],
                                             'ind2': field_dict['ind1']})
-    for subfield in field_dict['subfields']:
-        new_subfield = ElementTree.SubElement(new_datafield, "{http://www.loc.gov/MARC21/slim}subfield",
-                                              {'code': subfield})
-        new_subfield.text = field_dict['subfields'][subfield]
+    for subfield_code in field_dict['subfields']:
+        for subfield_text in field_dict['subfields'][subfield_code]:
+            new_subfield = ElementTree.SubElement(new_datafield, "{http://www.loc.gov/MARC21/slim}subfield",
+                                                  {'code': subfield_code})
+            new_subfield.text = subfield_text
 
 
 def get_subfield(record, tag, subfield_code):
@@ -129,9 +130,9 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     record.remove(datafield)
             for retrieve_sign in ['ixzs', 'ixrk']:
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ', 
-                                           'subfields': {'a': retrieve_sign, '2': 'LOK'}})
+                                           'subfields': {'a': [retrieve_sign], '2': ['LOK']}})
             create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
-                                       'subfields': {'a': 'mteo'}})
+                                       'subfields': {'a': ['mteo']}})
             volume = get_subfield(record, '936', 'd')
             issue = get_subfield(record, '936', 'e')
             pagination = get_subfield(record, '936', 'h')
@@ -144,13 +145,10 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                         '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
                         pagination_tag.text = fpage
                 else:
-                    print(get_subfield(record, '856', 'u'))
-                    pagination_tag = \
-                        record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
-                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
-                    pagination_tag.text = input('Bitte geben Sie die Seitenzahl des Artikels ein: ')
+                    append_to_postprocess = True
             if pagination is None:
                 append_to_postprocess = True
+            title = get_subfield(record, '245', 'a')
             if zeder_id in present_record_list:
                 delete_entries = []
                 if [year in present_record_lookup_years]:
@@ -160,7 +158,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                 print('Alle Titel in', issue, volume, year, 'werden gelöscht.')
                                 discard = True
                             else:
-                                title = get_subfield(record, '245', 'a')
                                 found = re.search(entry['title'], title, re.IGNORECASE)
                                 if found is not None:
                                     delete_entries.append(entry)
@@ -170,16 +167,21 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             for exclude_regex in exclude:
                 if re.search(exclude_regex, get_subfield(record, '245', 'a'), re.IGNORECASE):
                     discard = True
+            form_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="655"][@ind2="7"]'
+                                   '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
+            if form_tag is None:
+                if re.search('ISBN ?\d{1,2}[ -0-9]?', title):
+                    create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
+                                               'subfields': {'a': ['Rezension'], '0': ['(DE-588)4049712-4', '(DE-627)106186019'], '2': ['gnd-content']}})
+                    print('created tag Rezension')
             if discard:
                 discarded_nr += 1
                 continue
             elif append_to_postprocess:
-                form_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="655"][@ind2="7"]'
-                                       '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
                 if form_tag is not None:
                     if form_tag.text == 'Rezension':
                         create_marc_field(record, {'tag': '650', 'ind1': ' ', 'ind2': '4',
-                                                   'subfields': {'a': 'RezensionstagPica'}})
+                                                   'subfields': {'a': ['RezensionstagPica']}})
                 post_process_root.append(record)
                 post_process_nr += 1
             else:
@@ -189,7 +191,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                         jstor_dict = json.load(jstor_file)
                         add_jstor_links(record, jstor_dict, year, volume, pagination, issue)
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
-                                           'subfields': {'a': 'zota', '2': 'LOK'}})
+                                           'subfields': {'a': ['zota'], '2': ['LOK']}})
                 proper_root.append(record)
                 proper_nr += 1
 
@@ -201,27 +203,3 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     print('post_process:', post_process_nr)
     print('discard:', discarded_nr)
     print('volumes discarded:', volumes_discarded)
-
-    {"issue": "5", "volume": "38", "title": "23. Reception", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "22. Textual Criticism", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "21. language", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "Early Christianity", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "19.Graeco-Roman", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "18. Judaism", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "17.Revelation", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "16. Non-Pauline Letters", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "15. Pastoral Epistles", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "14. Philippians & Thessalonians", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "13. Ephesians, Colossians & Philemon", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "12. Galatians", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "11. Corinthians", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "10. Romans", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "9. Paul", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "8. John", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "7. Luke-Acts", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "6. Mark", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "5. Matthew", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "4. Gospels", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "3. Jesus", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "2. New Testaments Topics", "year": "2016"},
-    {"issue": "5", "volume": "38", "title": "1. New Testament General", "year": "2016"}
