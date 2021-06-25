@@ -100,6 +100,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     volumes_discarded = []
     post_process_nr = 0
     discarded_nr = 0
+    discarded_by_volume_nr = 0
     proper_nr = 0
     volume_list = [str(year) for year in range(volumes_to_catalogue[0], volumes_to_catalogue[1] + 1)]
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/present_records.json', 'r') as present_record_file:
@@ -120,6 +121,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
         for record in records:
             year = get_subfield(record, '264', 'c')
             if year not in volume_list:
+                discarded_by_volume_nr += 1
                 if year not in volumes_discarded:
                     volumes_discarded.append(year)
                 continue
@@ -196,10 +198,12 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                 proper_nr += 1
 
     proper_tree.write(zeder_id + '_proper.xml', encoding='utf-8', xml_declaration=True)
-    post_process_tree.write(zeder_id + '_post_process.xml', encoding='utf-8', xml_declaration=True)
+    if post_process_nr > 0:
+        post_process_tree.write(zeder_id + '_post_process.xml', encoding='utf-8', xml_declaration=True)
     if zeder_id in present_record_list:
         print('missing doublets:', present_record_list[zeder_id])
     print('proper:', proper_nr)
     print('post_process:', post_process_nr)
     print('discard:', discarded_nr)
+    print('discarded by volume:', discarded_by_volume_nr)
     print('volumes discarded:', volumes_discarded)
