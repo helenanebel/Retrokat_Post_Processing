@@ -58,11 +58,11 @@ def check_and_split_in_issues(zeder_id):
             reviews = 0
             current_issue = 'first'
             records = [record for record in records]
+            record_nr = 0
             for record in records:
+                record_nr += 1
                 new_issue = str(get_subfield(record, '936', 'd').zfill(3)) + \
                             str(get_subfield(record, '936', 'e').zfill(2)).replace('/', '-')
-                if records.index(record) == (len(records) - 1):
-                    issue_tree.write('volume_files/' + current_issue + '.xml', xml_declaration=True)
                 if new_issue not in all_issues:
                     with open('volume_files/' + current_issue + '.xml', 'w') as xml_file:
                         xml_file.close()
@@ -92,6 +92,9 @@ def check_and_split_in_issues(zeder_id):
                 pagination = get_subfield(record, '936', 'h')
                 paginations.append(pagination)
                 issue_root.append(record)
+                if records.index(record) == (len(records) - 1):
+                    issue_tree.write('volume_files/' + current_issue + '.xml', xml_declaration=True)
+                    print(get_subfield(record, '245', 'a'))
     print([beginning for beginning in all_title_beginnings if all_title_beginnings[beginning] > 3])
     print(missing_authors)
 
