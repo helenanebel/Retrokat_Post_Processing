@@ -9,3 +9,4 @@ result_files_processed
 *.csv
 *.json
 !present_records.json
+get_records.py
