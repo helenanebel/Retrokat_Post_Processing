@@ -20,7 +20,10 @@ for file in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_csv'):
             lastpage = row[15]
             if not firstpage:
                 continue
-            pages = firstpage + '-' + lastpage
+            if firstpage == lastpage:
+                pages = firstpage
+            else:
+                pages = firstpage + '-' + lastpage
             if issue:
                 if year not in jstor_dict:
                     jstor_dict[year] = {}
