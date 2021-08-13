@@ -1,6 +1,7 @@
 import os
 import xml.etree.ElementTree as ElementTree
 
+
 def merge_journal_records():
     ElementTree.register_namespace('', "http://www.loc.gov/MARC21/slim")
     complete_tree = ElementTree.parse('marcxml_empty.xml')
@@ -19,7 +20,8 @@ def merge_journal_records():
                     print(record_nr)
                 complete_root.append(record)
     complete_tree.write(zeder_id + '_proper.xml', encoding='utf-8', xml_declaration=True)
-    os.remove(zeder_id + '_post_process.xml')
+    if zeder_id + '_post_process.xml' in os.listdir():
+        os.remove(zeder_id + '_post_process.xml')
 
 
 if __name__ == '__main__':
