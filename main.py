@@ -5,7 +5,6 @@ import json
 
 if __name__ == '__main__':
     zeder_id = input('Bitte geben Sie die ZEDER-ID ein: ')
-    check_and_split_in_issues(zeder_id)
     conf_dict = {}
     conf_available = False
     if 'conf.json' in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/'):
@@ -13,6 +12,7 @@ if __name__ == '__main__':
             conf_dict = json.load(conf_file)
             if zeder_id in conf_dict:
                 conf_available = True
+    record_nr = check_and_split_in_issues(zeder_id, conf_available)
     if not conf_available:
         exclude = input('Bitte geben Sie die Liste auszuschließender Titel ein: ')
         exclude = json.loads(exclude.replace("'", '"'))
@@ -24,5 +24,7 @@ if __name__ == '__main__':
             with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
                 json.dump(conf_dict, conf_file)
     period = conf_dict[zeder_id]['period']
-    exclude = conf_dict[zeder_id]['exclude']
-    transform(zeder_id, exclude, period)
+    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/exclude.json', 'r') as exclusion_file:
+        exclude_everywhere = json.load(exclusion_file)
+    exclude = conf_dict[zeder_id]['exclude'] + exclude_everywhere
+    transform(zeder_id, exclude, period, record_nr)
