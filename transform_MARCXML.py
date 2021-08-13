@@ -18,7 +18,8 @@ def add_jstor_links(record, jstor_dict, year, volume, issue, pagination):
     if jstor_url:
         create_marc_field(record, {'tag': '856', 'ind1': '4', 'ind2': '0',
                                    'subfields': {'u': [jstor_url], 'z': ['ZZ']}})
-    print('JSTOR-URL added:', jstor_url)
+        return 1
+    return 0
 
 
 def create_marc_field(record, field_dict: dict):
@@ -40,11 +41,32 @@ def get_subfield(record, tag, subfield_code):
     return record.find(searchstring).text
 
 
-def check_and_split_in_issues(zeder_id):
+def get_fields(record, tag):
+    searchstring = '{http://www.loc.gov/MARC21/slim}datafield[@tag="' \
+                   + tag + '"]'
+    return record.findall(searchstring)
+
+
+def check_abstract(record):
+    abstract_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="520"]/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
+    if abstract_tag is not None:
+        if 60<len(abstract_tag.text)<150:
+            print("Short abstract:", abstract_tag.text)
+        elif len(abstract_tag.text)<60:
+            abstract_tags = get_fields(record, '520')
+            for abstract_tag in abstract_tags:
+                record.remove(abstract_tag)
+        if 'http' in abstract_tag.text:
+            print("Link in abstract:", abstract_tag.text)
+    return None
+
+
+def check_and_split_in_issues(zeder_id, conf_available):
     issue_tree = ElementTree.parse('marcxml_empty.xml')
     issue_root = issue_tree.getroot()
     all_title_beginnings = {}
     missing_authors = []
+    record_nr = 0
     for file in os.listdir('volume_files'):
         os.unlink('volume_files/' + file)
     for file in os.listdir('result_files'):
@@ -58,7 +80,6 @@ def check_and_split_in_issues(zeder_id):
             reviews = 0
             current_issue = 'first'
             records = [record for record in records]
-            record_nr = 0
             for record in records:
                 record_nr += 1
                 new_issue = str(get_subfield(record, '936', 'd').zfill(3)) + \
@@ -81,8 +102,9 @@ def check_and_split_in_issues(zeder_id):
                     current_issue = new_issue
                 title = get_subfield(record, '245', 'a')
                 if not record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="100"]'):
-                    missing_authors.append(title)
-                title_beginning = ' '.join(title.split()[:2])
+                    if title not in missing_authors:
+                        missing_authors.append(title)
+                title_beginning = ' '.join(title.split()[:3])
                 if title_beginning not in all_title_beginnings:
                     all_title_beginnings[title_beginning] = 1
                 else:
@@ -94,12 +116,17 @@ def check_and_split_in_issues(zeder_id):
                 issue_root.append(record)
                 if records.index(record) == (len(records) - 1):
                     issue_tree.write('volume_files/' + current_issue + '.xml', xml_declaration=True)
-                    print(get_subfield(record, '245', 'a'))
-    print([beginning for beginning in all_title_beginnings if all_title_beginnings[beginning] > 3])
-    print(missing_authors)
+    if conf_available:
+        if input("Show titles with multiple occurence and missing authors? (y/n) ") == 'y':
+            conf_available = False
+    if not conf_available:
+        print([beginning for beginning in all_title_beginnings if all_title_beginnings[beginning] > 3])
+        print(missing_authors)
+    return record_nr
 
 
-def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int, int]):
+def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int, int], record_nr):
+    total_jstor_fails = 0
     volumes_discarded = []
     post_process_nr = 0
     discarded_nr = 0
@@ -133,7 +160,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             for datafield in record.findall('{http://www.loc.gov/MARC21/slim}datafield'):
                 if datafield.attrib['tag'] == '935':
                     record.remove(datafield)
-            for retrieve_sign in ['ixzs', 'ixrk']:
+            for retrieve_sign in ['ixzs', 'ixrk', 'zota']:
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ', 
                                            'subfields': {'a': [retrieve_sign], '2': ['LOK']}})
             create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
@@ -172,6 +199,14 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             for exclude_regex in exclude:
                 if re.search(exclude_regex, get_subfield(record, '245', 'a'), re.IGNORECASE):
                     discard = True
+            if any([re.search(regex, title, re.IGNORECASE) for regex in [r'^errat*', r'^corrigend*', r'^correct*']]):
+                create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
+                                           'subfields': {'a': ['erco'], '2': ['LOK']}})
+                # Abrufzeichen für die Nachbearbeitung von Errata/Corrigenda!
+            responsibles = get_fields(record, '100') + get_fields(record, '700')
+            for responsible in responsibles:
+                if re.match(r'^, ?$', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
+                    record.remove(responsible)
             form_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="655"][@ind2="7"]'
                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
             if form_tag is None:
@@ -179,24 +214,23 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
                                                'subfields': {'a': ['Rezension'], '0': ['(DE-588)4049712-4', '(DE-627)106186019'], '2': ['gnd-content']}})
                     print('created tag Rezension')
+            check_abstract(record)
             if discard:
                 discarded_nr += 1
                 continue
             elif append_to_postprocess:
-                if form_tag is not None:
+                '''if form_tag is not None:
                     if form_tag.text == 'Rezension':
                         create_marc_field(record, {'tag': '650', 'ind1': ' ', 'ind2': '4',
-                                                   'subfields': {'a': ['RezensionstagPica']}})
+                                                   'subfields': {'a': ['RezensionstagPica']}})'''
                 post_process_root.append(record)
                 post_process_nr += 1
             else:
-                if zeder_id + '.json' in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_csv'):
-                    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_csv/' + file, 'r',
+                if zeder_id + '.json' in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_json'):
+                    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_json/' + zeder_id + '.json', 'r',
                               encoding="utf-8") as jstor_file:
                         jstor_dict = json.load(jstor_file)
-                        add_jstor_links(record, jstor_dict, year, volume, pagination, issue)
-                create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
-                                           'subfields': {'a': ['zota'], '2': ['LOK']}})
+                        total_jstor_fails += add_jstor_links(record, jstor_dict, year, volume, issue, pagination, title)
                 proper_root.append(record)
                 proper_nr += 1
 
@@ -205,8 +239,12 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
         post_process_tree.write(zeder_id + '_post_process.xml', encoding='utf-8', xml_declaration=True)
     if zeder_id in present_record_list:
         print('missing doublets:', present_record_list[zeder_id])
+    print('total number of records harvested:', record_nr)
     print('proper:', proper_nr)
     print('post_process:', post_process_nr)
-    print('discard:', discarded_nr)
+    print('discarded:', discarded_nr + discarded_by_volume_nr)
     print('discarded by volume:', discarded_by_volume_nr)
     print('volumes discarded:', volumes_discarded)
+    print('total jstor fails:', total_jstor_fails)
+
+# announcement, books and media received
