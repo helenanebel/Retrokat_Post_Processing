@@ -133,6 +133,9 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     discarded_by_volume_nr = 0
     proper_nr = 0
     volume_list = [str(year) for year in range(volumes_to_catalogue[0], volumes_to_catalogue[1] + 1)]
+    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zeder_id + '.json', 'r') as missing_link_file:
+        records_with_missing_links = json.load(missing_link_file)
+        missing_link_lookup_years = [missing_link_record['year'] for missing_link_record in records_with_missing_links]
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/present_records.json', 'r') as present_record_file:
         present_record_list = json.load(present_record_file)
         if zeder_id in present_record_list:
@@ -196,6 +199,11 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                     discard = True
                     for entry in delete_entries:
                         present_record_list[zeder_id].remove(entry)
+            if [year in missing_link_lookup_years]:
+                for entry in [entry for entry in records_with_missing_links if entry['year'] == year]:
+                    if ('volume' in entry)  and ('issue' in entry) and ('pages' in entry):
+                        if (entry['volume'] == volume) and (entry['issue'] == issue) and (entry['pages'] == pagination):
+                            print('found link for record')
             for exclude_regex in exclude:
                 if re.search(exclude_regex, get_subfield(record, '245', 'a'), re.IGNORECASE):
                     discard = True
@@ -230,7 +238,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_json/' + zeder_id + '.json', 'r',
                               encoding="utf-8") as jstor_file:
                         jstor_dict = json.load(jstor_file)
-                        total_jstor_fails += add_jstor_links(record, jstor_dict, year, volume, issue, pagination, title)
+                        total_jstor_fails += add_jstor_links(record, jstor_dict, year, volume, issue, pagination)
                 proper_root.append(record)
                 proper_nr += 1
 
