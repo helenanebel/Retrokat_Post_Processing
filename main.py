@@ -1,10 +1,13 @@
 import os
-
+import add_missing_links
 from transform_MARCXML import transform, check_and_split_in_issues
 import json
 
 if __name__ == '__main__':
     zeder_id = input('Bitte geben Sie die ZEDER-ID ein: ')
+    if zeder_id + '.json' not in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links'):
+        eppn = input('Bitte geben Sie die ePPN ein: ')
+        add_missing_links.get_records_with_missing_links(eppn, zeder_id)
     conf_dict = {}
     conf_available = False
     if 'conf.json' in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/'):
