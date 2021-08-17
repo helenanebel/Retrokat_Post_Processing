@@ -1,8 +1,9 @@
-jstor_metadata
+jstor_add_links
+multiple_crawl
+proper_files
 result_files
-volume_files
-result_files_to_process
 result_files_processed
+volume_files
 *.xml
 !example.xml
 !marcxml_empty.xml
