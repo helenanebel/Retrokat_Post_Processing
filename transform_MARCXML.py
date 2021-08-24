@@ -112,7 +112,8 @@ def check_and_split_in_issues(zeder_id, conf_available):
                 if get_subfield(record, '655', 'a'):
                     reviews += 1
                 pagination = get_subfield(record, '936', 'h')
-                paginations.append(pagination)
+                if pagination:
+                    paginations.append(pagination)
                 issue_root.append(record)
                 if records.index(record) == (len(records) - 1):
                     issue_tree.write('volume_files/' + current_issue + '.xml', xml_declaration=True)
@@ -171,17 +172,18 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             volume = get_subfield(record, '936', 'd')
             issue = get_subfield(record, '936', 'e')
             pagination = get_subfield(record, '936', 'h')
-            if '-' in pagination:
-                if re.findall(r'(\d+)-(\d+)', pagination):
-                    fpage, lpage = re.findall(r'(\d+)-(\d+)', pagination)[0]
-                    if fpage == lpage:
-                        pagination_tag = \
-                            record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
-                                        '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
-                        pagination_tag.text = fpage
-                else:
-                    append_to_postprocess = True
-            if pagination is None:
+            if pagination:
+                if '-' in pagination:
+                    if re.findall(r'(\d+)-(\d+)', pagination):
+                        fpage, lpage = re.findall(r'(\d+)-(\d+)', pagination)[0]
+                        if fpage == lpage:
+                            pagination_tag = \
+                                record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
+                                            '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
+                            pagination_tag.text = fpage
+                    else:
+                        append_to_postprocess = True
+            else:
                 append_to_postprocess = True
             title = get_subfield(record, '245', 'a')
             if zeder_id in present_record_list:
