@@ -11,15 +11,17 @@ def add_jstor_links(record, jstor_dict, year, volume, issue, pagination):
             if issue:
                 if issue in jstor_dict[year][volume]:
                     if pagination in jstor_dict[year][volume][issue]:
-                        jstor_url = jstor_dict[year][volume][issue][pagination]
+                        if len(jstor_dict[year][volume][issue][pagination]) == 1:
+                            jstor_url = list(jstor_dict[year][volume][issue][pagination].values())[0]
             else:
                 if pagination in jstor_dict[year][volume]:
-                    jstor_url = jstor_dict[year][volume][pagination]
+                    if len(jstor_dict[year][volume][pagination]) == 1:
+                        jstor_url = list(jstor_dict[year][volume][pagination].values())[0]
     if jstor_url:
-        create_marc_field(record, {'tag': '856', 'ind1': '4', 'ind2': '0',
-                                   'subfields': {'u': [jstor_url], 'z': ['ZZ']}})
-        return 1
-    return 0
+        create_marc_field(record, {'tag': '866', 'ind1': ' ', 'ind2': ' ',
+                                   'subfields': {'x': ['JSTOR#' + jstor_url], '2': ['LOK']}})
+        return 0
+    return 1
 
 
 def create_marc_field(record, field_dict: dict):
@@ -214,8 +216,11 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                            'subfields': {'a': ['erco'], '2': ['LOK']}})
                 # Abrufzeichen für die Nachbearbeitung von Errata/Corrigenda!
             responsibles = get_fields(record, '100') + get_fields(record, '700')
+            url = get_subfield(record, '856', 'u')
             for responsible in responsibles:
                 if re.match(r'^, ?$', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
+                    record.remove(responsible)
+                if re.match(r'^\w\., \w\.$', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
                     record.remove(responsible)
             form_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="655"][@ind2="7"]'
                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
@@ -223,7 +228,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                 if re.search('ISBN ?\d{1,2}[ -0-9]?', title):
                     create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
                                                'subfields': {'a': ['Rezension'], '0': ['(DE-588)4049712-4', '(DE-627)106186019'], '2': ['gnd-content']}})
-                    print('created tag Rezension')
+                    print('created tag Rezension for url', url)
             check_abstract(record)
             if discard:
                 discarded_nr += 1
