@@ -3,12 +3,15 @@ import re
 import urllib.request
 from bs4 import BeautifulSoup
 
+with open('zotero_harvester_header.conf', 'r') as zotero_harvester_header_file:
+    zotero_harvester_header = zotero_harvester_header_file.read()
+
 all_zids = []
 download_command_file = open('C:/Users/hnebel/Documents/download_commands.txt', 'w')
 total_journal_number = 0
 is_muse = False
 muse_nr = 1
-with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w') as sh_file:
+with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as sh_file:
     sh_file.write('# !/bin/bash\n')
     with open('C:/Users/hnebel/Documents/zotero_harvester.conf', 'r', encoding="utf-8") as conf_file:
         get_conf = False
@@ -50,52 +53,72 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w') as sh_file:
                     total_journal_number += 1
                     search_id = False
                 else:
-                    muse_nr = 1
+                    muse_nr = 0
                     total_journal_number += 1
-                    muse_file = open('C:/Users/hnebel/Documents/conf-files/' + zid + '_' + str(muse_nr) + '.conf', 'w')
                     conf_nr = 0
+                    muse_file = open('C:/Users/hnebel/Documents/conf-files/' + zid + '_' + str(conf_nr) + '.conf', 'w', newline='\n')
+                    muse_file.write(zotero_harvester_header)
                     article_nr_in_file = 0
                     journal_page = urllib.request.urlopen(muse_url)
                     data = journal_page.read()
                     journal_soup = BeautifulSoup(data, "lxml")
                     issue_links = ['https://muse.jhu.edu' + link for link in [tag['href'] for tag in journal_soup.find_all('a') if tag.has_attr('href')] if re.search(r'^/issue/\d+$', link)]
                     for issue_link in issue_links:
+                        '''print(issue_link)
                         issue_page = urllib.request.urlopen(issue_link)
                         data = issue_page.read()
                         issue_soup = BeautifulSoup(data, "lxml")
-                        article_nr = len(['https://muse.jhu.edu/' + link for link in
+                        article_nr = len(list(set(['https://muse.jhu.edu/' + link for link in
                                        [tag['href'] for tag in issue_soup.find_all('a') if tag.has_attr('href')] if
-                                       re.search(r'^/article/\d+$', link)])
+                                        (re.search(r'^/article/\d+$', link) and ('/0' not in link))])))
                         if (article_nr_in_file + article_nr) > 400:
-                            raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{1}.xml .\n'
-                            download_command = raw_download_command.format(zid, zid + '_' + str(muse_nr))
-                            download_command_file.write(download_command)
-                            raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '_' + str(
-                                muse_nr) + '.conf' + '" "JOURNAL" &> "out_{1}.out";\n'
-                            harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(muse_nr))
-                            sh_file.write('wait; sleep 25m; wait;' + harvesting_command)
+                            sh_file.write('wait; sleep 25m;\n')
                             muse_file.close()
                             article_nr_in_file = article_nr
                             muse_nr += 1
-                            muse_file = open('C:/Users/hnebel/Documents/conf-files/' + zid + '_' + str(muse_nr) + '.conf', 'w')
+                            muse_file = open('C:/Users/hnebel/Documents/conf-files/' + zid + '_' + str(conf_nr) + '.conf', 'w', newline='\n')
+                            muse_file.write(zotero_harvester_header)
                             conf_nr = 0
                             muse_conf = re.sub(r'\++]', ']', muse_conf)
+                            title = re.sub(r'\++$', '', title)
                         else:
                             article_nr_in_file += article_nr
                         if issue_link == issue_links[-1]:
-                            raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{1}.xml .\n'
-                            download_command = raw_download_command.format(zid, zid + '_' + str(muse_nr))
-                            download_command_file.write(download_command)
-                            raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '_' + str(
-                                muse_nr) + '.conf' + '" "JOURNAL" &> "out_{1}.out";\n'
-                            harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(muse_nr))
-                            sh_file.write('wait; sleep 25m; wait;' + harvesting_command)
+                            sh_file.write('wait; sleep 25m;\n')
                         muse_conf = re.sub(r'zotero_url\s*=\s*.+[^\n]*\n',
                                            'zotero_url     = ' + issue_link + '\n', muse_conf)
+                        muse_conf = re.sub(r'zotero_max_crawl_depth\s*=\s*.+[^\n]*\n', '', muse_conf)
                         muse_conf = muse_conf.replace('\n\n', '\n')
                         if conf_nr > 0:
                             muse_conf = muse_conf.replace(title, title + '+')
+                            title = title.replace(title, title + '+')
                         muse_file.write(muse_conf + '\n')
+                        raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{1}.xml .\n'
+                        download_command = raw_download_command.format(zid, zid + '_' + str(muse_nr))
+                        download_command_file.write(download_command)
+                        raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '_' + str(
+                            muse_nr) + '.conf' + '" "JOURNAL" "{2}" &> "out_{1}.out";\n'
+                        harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(conf_nr), title)
+                        sh_file.write('wait;' + harvesting_command)
+                        conf_nr += 1'''
+                        # Testen: jeweils nur ein Issue aufrufen, dann 25 Minuten warten
+                        print(issue_link)
+                        muse_conf = re.sub(r'zotero_url\s*=\s*.+[^\n]*\n',
+                                           'zotero_url     = ' + issue_link + '\n', muse_conf)
+                        muse_conf = re.sub(r'zotero_max_crawl_depth\s*=\s*.+[^\n]*\n', '', muse_conf)
+                        muse_conf = muse_conf.replace('\n\n', '\n')
+                        if conf_nr > 0:
+                            muse_conf = muse_conf.replace(title, title + '+')
+                            title = title.replace(title, title + '+')
+                        muse_file.write(muse_conf + '\n')
+                        raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{1}.xml .\n'
+                        download_command = raw_download_command.format(zid, zid + '_' + str(conf_nr))
+                        download_command_file.write(download_command)
+                        raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '_' + str(
+                            muse_nr) + '.conf' + '" "JOURNAL" "{2}" &> "out_{1}.out";\n'
+                        harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(conf_nr), title)
+                        sh_file.write('wait;' + harvesting_command)
+                        sh_file.write('wait; sleep 25m;\n')
                         conf_nr += 1
                     muse_file.close()
                     total_journal_number += 1
