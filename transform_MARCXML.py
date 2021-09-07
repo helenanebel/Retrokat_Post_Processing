@@ -2,6 +2,7 @@ import json
 import os
 import xml.etree.ElementTree as ElementTree
 import re
+from search_reviewed_publication import search_publication
 
 
 def add_jstor_links(record, jstor_dict, year, volume, issue, pagination):
@@ -52,14 +53,32 @@ def get_fields(record, tag):
 def check_abstract(record):
     abstract_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="520"]/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
     if abstract_tag is not None:
-        if 60<len(abstract_tag.text)<150:
+        if re.search(r'Article .+ was published on .+ in the journal .+ (.+).', abstract_tag.text, re.IGNORECASE):
+            abstract_tags = get_fields(record, '520')
+            for abstract_tag in abstract_tags:
+                record.remove(abstract_tag)
+        elif 60 < len(abstract_tag.text) < 150:
             print("Short abstract:", abstract_tag.text)
-        elif len(abstract_tag.text)<60:
+        elif len(abstract_tag.text) < 60:
             abstract_tags = get_fields(record, '520')
             for abstract_tag in abstract_tags:
                 record.remove(abstract_tag)
         if 'http' in abstract_tag.text:
             print("Link in abstract:", abstract_tag.text)
+    return None
+
+
+def create_review_link(record):
+    review_url = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="856"]/{http://www.loc.gov/MARC21/slim}subfield[@code="u"]')
+    tags = record.findall('{http://www.loc.gov/MARC21/slim}datafield[@tag="650"]/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
+    for tag in tags:
+        if re.search(r'^#reviewed_pub#', tag.text, re.IGNORECASE):
+            pub_title = re.findall(r'#title::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#title::([^#]+)#', tag.text, re.IGNORECASE)[0] != 'null' else ''
+            pub_author = re.findall(r'#name::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#name::([^#]+)#', tag.text, re.IGNORECASE)[0] != 'null' else ''
+            pub_year = re.findall(r'#year::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#year::([^#]+)#', tag.text, re.IGNORECASE)[0] != 'null' else ''
+            pub_publisher = re.findall(r'#publisher::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#publisher::([^#]+)#', tag.text, re.IGNORECASE)[0] != 'null' else ''
+            pub_place = re.findall(r'#place::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#place::([^#]+)#', tag.text, re.IGNORECASE)[0] != 'null' else ''
+            search_publication(pub_title, pub_author, pub_year, pub_place)
     return None
 
 
@@ -82,6 +101,8 @@ def check_and_split_in_issues(zeder_id, conf_available):
             reviews = 0
             current_issue = 'first'
             records = [record for record in records]
+            with open('W:/FID-Projekte/Team Retro-Scan/Zotero/exclude.json', 'r') as exclusion_file:
+                exclude_everywhere = json.load(exclusion_file)
             for record in records:
                 record_nr += 1
                 new_issue = str(get_subfield(record, '936', 'd').zfill(3)) + \
@@ -99,18 +120,24 @@ def check_and_split_in_issues(zeder_id, conf_available):
                         print(current_issue, 'has problem with pagination')
                     paginations = []
                     if (not reviews) and (not current_issue == 'first'):
-                        print(current_issue, 'has no reviews')
+                        print(current_issue, 'has no reviews! example:', get_subfield(record, '856', 'u'))
                     reviews = 0
                     current_issue = new_issue
                 title = get_subfield(record, '245', 'a')
+                found = False
+                for exclude_regex in exclude_everywhere:
+                    if re.search(exclude_regex, title, re.IGNORECASE):
+                        found = True
                 if not record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="100"]'):
                     if title not in missing_authors:
-                        missing_authors.append(title)
+                        if not found:
+                            missing_authors.append(title)
                 title_beginning = ' '.join(title.split()[:3])
-                if title_beginning not in all_title_beginnings:
-                    all_title_beginnings[title_beginning] = 1
-                else:
-                    all_title_beginnings[title_beginning] += 1
+                if not found:
+                    if title_beginning not in all_title_beginnings:
+                        all_title_beginnings[title_beginning] = 1
+                    else:
+                        all_title_beginnings[title_beginning] += 1
                 if get_subfield(record, '655', 'a'):
                     reviews += 1
                 pagination = get_subfield(record, '936', 'h')
@@ -211,7 +238,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             for exclude_regex in exclude:
                 if re.search(exclude_regex, get_subfield(record, '245', 'a'), re.IGNORECASE):
                     discard = True
-            if any([re.search(regex, title, re.IGNORECASE) for regex in [r'^errat*', r'^corrigend*', r'^correct*']]):
+            if any([re.search(regex, title, re.IGNORECASE) for regex in [r'^errat*', r'^corrigend*', r'^correct*', r'^berichtigung*']]):
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                            'subfields': {'a': ['erco'], '2': ['LOK']}})
                 # Abrufzeichen für die Nachbearbeitung von Errata/Corrigenda!
@@ -221,7 +248,9 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                 if re.match(r'^, ?$', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
                     record.remove(responsible)
                 if re.match(r'^\w\., \w\.$', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
-                    record.remove(responsible)
+                    gnd_link = responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="0"]')
+                    if gnd_link is not None:
+                        responsible.remove(gnd_link)
             form_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="655"][@ind2="7"]'
                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
             if form_tag is None:
@@ -229,6 +258,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
                                                'subfields': {'a': ['Rezension'], '0': ['(DE-588)4049712-4', '(DE-627)106186019'], '2': ['gnd-content']}})
                     print('created tag Rezension for url', url)
+            elif form_tag.text == "Rezension":
+                create_review_link(record)
             check_abstract(record)
             if discard:
                 discarded_nr += 1
