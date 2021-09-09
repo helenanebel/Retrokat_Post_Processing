@@ -2,26 +2,43 @@ import json
 import os
 import xml.etree.ElementTree as ElementTree
 import re
-from search_reviewed_publication import search_publication
+from search_reviewed_publication import search_publication, search_publication_with_isbn
 
 
 def add_jstor_links(record, jstor_dict, year, volume, issue, pagination):
     jstor_url = None
     if year in jstor_dict:
         if volume in jstor_dict[year]:
-            if issue:
-                if issue in jstor_dict[year][volume]:
-                    if pagination in jstor_dict[year][volume][issue]:
-                        if len(jstor_dict[year][volume][issue][pagination]) == 1:
-                            jstor_url = list(jstor_dict[year][volume][issue][pagination].values())[0]
-            else:
-                if pagination in jstor_dict[year][volume]:
-                    if len(jstor_dict[year][volume][pagination]) == 1:
-                        jstor_url = list(jstor_dict[year][volume][pagination].values())[0]
+            if not issue:
+                issue = 'n'
+            if issue in jstor_dict[year][volume]:
+                if pagination in jstor_dict[year][volume][issue]:
+                    if len(jstor_dict[year][volume][issue][pagination]) == 1:
+                        jstor_url = list(jstor_dict[year][volume][issue][pagination].values())[0]
+                    else:
+                        author_name = get_subfield(record, '100', 'a')
+                        if author_name:
+                            names_list = re.findall(r'\w+', author_name)
+                            for key in jstor_dict[year][volume][issue][pagination]:
+                                if len(names_list) == len([name for name in names_list if name in key]):
+                                    jstor_url = jstor_dict[year][volume][issue][pagination][key]
+                                    break
+                elif 'n' in jstor_dict[year][volume]:
+                    if pagination in jstor_dict[year][volume]['n']:
+                        if len(jstor_dict[year][volume]['n'][pagination]) == 1:
+                            jstor_url = list(jstor_dict[year][volume]['n'][pagination].values())[0]
+                            print(jstor_url)
     if jstor_url:
         create_marc_field(record, {'tag': '866', 'ind1': ' ', 'ind2': ' ',
                                    'subfields': {'x': ['JSTOR#' + jstor_url], '2': ['LOK']}})
         return 0
+    else:
+        print(get_subfield(record, '245', 'a'))
+        print(year, volume, issue, pagination)
+        if volume in jstor_dict[year]:
+            if issue in jstor_dict[year][volume]:
+                print(jstor_dict[year][volume][issue])
+        print('____')
     return 1
 
 
@@ -53,10 +70,16 @@ def get_fields(record, tag):
 def check_abstract(record):
     abstract_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="520"]/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
     if abstract_tag is not None:
-        if re.search(r'Article .+ was published on .+ in the journal .+ (.+).', abstract_tag.text, re.IGNORECASE):
+        if re.search(r'^.{1,75}Article .+ was published on .+ in the journal .+ (.+).', abstract_tag.text, re.IGNORECASE):
             abstract_tags = get_fields(record, '520')
             for abstract_tag in abstract_tags:
                 record.remove(abstract_tag)
+                print('deleted abstract-tag: ', abstract_tag.text)
+        elif re.search(r'^.{1,75},\s+Volum\s+\d+,\s+Issue\s+[\d\-/]+,\s+.+,\s+Pages [\d\-/],\s+https://doi.org/', abstract_tag.text, re.IGNORECASE):
+            abstract_tags = get_fields(record, '520')
+            for abstract_tag in abstract_tags:
+                record.remove(abstract_tag)
+                print('deleted abstract-tag: ', abstract_tag.text)
         elif 60 < len(abstract_tag.text) < 150:
             print("Short abstract:", abstract_tag.text)
         elif len(abstract_tag.text) < 60:
@@ -238,7 +261,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             for exclude_regex in exclude:
                 if re.search(exclude_regex, get_subfield(record, '245', 'a'), re.IGNORECASE):
                     discard = True
-            if any([re.search(regex, title, re.IGNORECASE) for regex in [r'^errat*', r'^corrigend*', r'^correct*', r'^berichtigung*']]):
+            if any([re.search(regex, title, re.IGNORECASE) for regex in [r'^errat*', r'^corrigend*', r'^correct*', r'^berichtigung*',
+                                                                         r'\berrat((um)|(a))\b', r'\bcorrigend((um)|(a))\b', r'\bcorrections?\b', r'\bberichtigung\b']]):
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                            'subfields': {'a': ['erco'], '2': ['LOK']}})
                 # Abrufzeichen für die Nachbearbeitung von Errata/Corrigenda!
@@ -258,9 +282,21 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
                                                'subfields': {'a': ['Rezension'], '0': ['(DE-588)4049712-4', '(DE-627)106186019'], '2': ['gnd-content']}})
                     print('created tag Rezension for url', url)
-            elif form_tag.text == "Rezension":
-                create_review_link(record)
+            # elif form_tag.text == "Rezension":
+                # create_review_link(record)
             check_abstract(record)
+            journal_link_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="773"]'
+                                            '/{http://www.loc.gov/MARC21/slim}subfield[@code="t"]')
+            journal_link_tag.text = journal_link_tag.text.strip('+')
+            journal_name_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="JOU"]'
+                                           '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
+            journal_name_tag.text = journal_name_tag.text.strip('+')
+            isbn_list = re.findall(r'[^\d]((?:\d{3}[\- ])?(?:\d[\- ]?){10})', title)
+            for isbn in isbn_list:
+                # print(isbn)
+                isbn = re.sub(r'[\- ]', '', isbn)
+                isbn = isbn + 'x' if len(isbn) == 10 else isbn
+                # search_publication_with_isbn(isbn)
             if discard:
                 discarded_nr += 1
                 continue
