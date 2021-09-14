@@ -9,14 +9,15 @@ def merge_journal_records():
     zeder_id = input('Bitte geben sie die ZEDER-ID der zusammenzuführenden Records ein: ')
     record_nr = 0
     for file in os.listdir():
-        if zeder_id + '_' in file:
+        if (zeder_id + '_' in file) and ('.xml' in file):
+            print(file)
             tree = ElementTree.parse(file)
             root = tree.getroot()
             records = root.findall('.//{http://www.loc.gov/MARC21/slim}record')
             records = [record for record in records]
             for record in records:
                 record_nr += 1
-                if record_nr%200 == 0:
+                if record_nr % 500 == 0:
                     print(record_nr)
                 complete_root.append(record)
     complete_tree.write(zeder_id + '_proper.xml', encoding='utf-8', xml_declaration=True)
