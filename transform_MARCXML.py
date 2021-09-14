@@ -3,11 +3,19 @@ import os
 import xml.etree.ElementTree as ElementTree
 import re
 from search_reviewed_publication import search_publication, search_publication_with_isbn
+import csv
 
 
 def add_jstor_links(record, jstor_dict, year, volume, issue, pagination):
+    all_paginations = []
+    pagination_dict = {}
     jstor_url = None
     if year in jstor_dict:
+        for v in jstor_dict[year]:
+            for i in jstor_dict[year][v]:
+                for p in jstor_dict[year][v][i]:
+                    all_paginations.append(p)
+                    pagination_dict[p] = jstor_dict[year][v][i][p]
         if volume in jstor_dict[year]:
             if not issue:
                 issue = 'n'
@@ -17,28 +25,27 @@ def add_jstor_links(record, jstor_dict, year, volume, issue, pagination):
                         jstor_url = list(jstor_dict[year][volume][issue][pagination].values())[0]
                     else:
                         author_name = get_subfield(record, '100', 'a')
-                        if author_name:
-                            names_list = re.findall(r'\w+', author_name)
-                            for key in jstor_dict[year][volume][issue][pagination]:
-                                if len(names_list) == len([name for name in names_list if name in key]):
-                                    jstor_url = jstor_dict[year][volume][issue][pagination][key]
-                                    break
+                        if not author_name:
+                            author_name = 'nn'
+                        names_list = re.findall(r'\w+', author_name)
+                        for key in jstor_dict[year][volume][issue][pagination]:
+                            if len(names_list) == len([name for name in names_list if name in key]):
+                                jstor_url = jstor_dict[year][volume][issue][pagination][key]
+                                break
                 elif 'n' in jstor_dict[year][volume]:
                     if pagination in jstor_dict[year][volume]['n']:
                         if len(jstor_dict[year][volume]['n'][pagination]) == 1:
                             jstor_url = list(jstor_dict[year][volume]['n'][pagination].values())[0]
-                            print(jstor_url)
+    if all_paginations.count(pagination) == 1:
+        jstor_url = list(pagination_dict[pagination].values())[0]
     if jstor_url:
         create_marc_field(record, {'tag': '866', 'ind1': ' ', 'ind2': ' ',
                                    'subfields': {'x': ['JSTOR#' + jstor_url], '2': ['LOK']}})
         return 0
-    else:
-        print(get_subfield(record, '245', 'a'))
-        print(year, volume, issue, pagination)
-        if volume in jstor_dict[year]:
-            if issue in jstor_dict[year][volume]:
-                print(jstor_dict[year][volume][issue])
-        print('____')
+    # else:
+        # print(get_subfield(record, '245', 'a'))
+        # print(year, volume, issue, pagination)
+        # print('____')
     return 1
 
 
@@ -70,16 +77,16 @@ def get_fields(record, tag):
 def check_abstract(record):
     abstract_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="520"]/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
     if abstract_tag is not None:
-        if re.search(r'^.{1,75}Article .+ was published on .+ in the journal .+ (.+).', abstract_tag.text, re.IGNORECASE):
+        if re.search(r'^.{1,125}Article .+ was published on .+ in the journal .+ (.+).', abstract_tag.text, re.IGNORECASE):
             abstract_tags = get_fields(record, '520')
             for abstract_tag in abstract_tags:
+                print('deleted abstract-tag')
                 record.remove(abstract_tag)
-                print('deleted abstract-tag: ', abstract_tag.text)
-        elif re.search(r'^.{1,75},\s+Volum\s+\d+,\s+Issue\s+[\d\-/]+,\s+.+,\s+Pages [\d\-/],\s+https://doi.org/', abstract_tag.text, re.IGNORECASE):
+        elif re.search(r'^.{1,125},\s+Volume\s+\d+,\s+Issue\s+[\d–/]+,\s+.+,\s+Pages\s+[\d–/]+,\s+https://doi\.org/', abstract_tag.text, re.IGNORECASE):
             abstract_tags = get_fields(record, '520')
             for abstract_tag in abstract_tags:
+                print('deleted abstract-tag')
                 record.remove(abstract_tag)
-                print('deleted abstract-tag: ', abstract_tag.text)
         elif 60 < len(abstract_tag.text) < 150:
             print("Short abstract:", abstract_tag.text)
         elif len(abstract_tag.text) < 60:
@@ -92,17 +99,23 @@ def check_abstract(record):
 
 
 def create_review_link(record):
-    review_url = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="856"]/{http://www.loc.gov/MARC21/slim}subfield[@code="u"]')
     tags = record.findall('{http://www.loc.gov/MARC21/slim}datafield[@tag="650"]/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
+    keywords = get_fields(record, '650')
+    ppns = []
+    is_theo = []
     for tag in tags:
         if re.search(r'^#reviewed_pub#', tag.text, re.IGNORECASE):
-            pub_title = re.findall(r'#title::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#title::([^#]+)#', tag.text, re.IGNORECASE)[0] != 'null' else ''
-            pub_author = re.findall(r'#name::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#name::([^#]+)#', tag.text, re.IGNORECASE)[0] != 'null' else ''
-            pub_year = re.findall(r'#year::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#year::([^#]+)#', tag.text, re.IGNORECASE)[0] != 'null' else ''
-            pub_publisher = re.findall(r'#publisher::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#publisher::([^#]+)#', tag.text, re.IGNORECASE)[0] != 'null' else ''
-            pub_place = re.findall(r'#place::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#place::([^#]+)#', tag.text, re.IGNORECASE)[0] != 'null' else ''
-            search_publication(pub_title, pub_author, pub_year, pub_place)
-    return None
+            pub_title = re.findall(r'#title::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#title::([^#]+)#', tag.text, re.IGNORECASE) else ''
+            pub_author = re.findall(r'#name::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#name::([^#]+)#', tag.text, re.IGNORECASE) else ''
+            pub_year = re.findall(r'#year::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#year::([^#]+)#', tag.text, re.IGNORECASE) else ''
+            pub_place = re.findall(r'#place::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#place::([^#]+)#', tag.text, re.IGNORECASE) else ''
+            tag_ppns, tag_is_theo = search_publication(pub_title, pub_author, pub_year, pub_place)
+            ppns.append(tag_ppns)
+            is_theo.append(tag_is_theo)
+            for keyword in keywords:
+                if keyword.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text == tag.text:
+                    record.remove(keyword)
+    return ppns, is_theo
 
 
 def check_and_split_in_issues(zeder_id, conf_available):
@@ -180,12 +193,15 @@ def check_and_split_in_issues(zeder_id, conf_available):
 
 def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int, int], record_nr):
     total_jstor_fails = 0
+    total_jstor_links = 0
+    review_links_created = 0
     volumes_discarded = []
     post_process_nr = 0
     discarded_nr = 0
     discarded_by_volume_nr = 0
     proper_nr = 0
     volume_list = [str(year) for year in range(volumes_to_catalogue[0], volumes_to_catalogue[1] + 1)]
+    non_ixtheo_ppns = []
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zeder_id + '.json', 'r') as missing_link_file:
         records_with_missing_links = json.load(missing_link_file)
         missing_link_lookup_years = [missing_link_record['year'] for missing_link_record in records_with_missing_links]
@@ -261,7 +277,10 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             for exclude_regex in exclude:
                 if re.search(exclude_regex, get_subfield(record, '245', 'a'), re.IGNORECASE):
                     discard = True
-            if any([re.search(regex, title, re.IGNORECASE) for regex in [r'^errat*', r'^corrigend*', r'^correct*', r'^berichtigung*',
+            if discard:
+                discarded_nr += 1
+                continue
+            if any([re.search(regex, title, re.IGNORECASE) for regex in [r'^errat*', r'^corrigend*', r'^correct*', r'^berichtigung*', r'^omission*',
                                                                          r'\berrat((um)|(a))\b', r'\bcorrigend((um)|(a))\b', r'\bcorrections?\b', r'\bberichtigung\b']]):
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                            'subfields': {'a': ['erco'], '2': ['LOK']}})
@@ -275,15 +294,38 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     gnd_link = responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="0"]')
                     if gnd_link is not None:
                         responsible.remove(gnd_link)
+            ppns = []
+            is_theo = False
             form_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="655"][@ind2="7"]'
                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
             if form_tag is None:
-                if re.search('ISBN ?\d{1,2}[ -0-9]?', title):
+                if re.search(r'[^\d]((?:\d{3}[\- ])?(?:\d[\- ]?){10})', title):
                     create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
                                                'subfields': {'a': ['Rezension'], '0': ['(DE-588)4049712-4', '(DE-627)106186019'], '2': ['gnd-content']}})
                     print('created tag Rezension for url', url)
-            # elif form_tag.text == "Rezension":
-                # create_review_link(record)
+            elif form_tag.text == "Rezension":
+                ppns, is_theo = create_review_link(record)
+                if not ppns:
+                    isbn_list = re.findall(r'[^\d]((?:\d{3}[\- ])?(?:\d[\- ]?){10})', title)
+                    for isbn in isbn_list:
+                        isbn = re.sub(r'[\- ]', '', isbn)
+                        isbn = isbn + 'x' if len(isbn) == 10 else isbn
+                        isbn_ppns, isbn_is_theo = search_publication_with_isbn(isbn)
+                        ppns.append(isbn_ppns)
+                        is_theo.append(isbn_is_theo)
+                ppn_list_nr = 0
+                for ppn_list in ppns:
+                    if ppn_list:
+                        for ppn in ppn_list:
+                            create_marc_field(record, {'tag': '787', 'ind1': '0', 'ind2': '8',
+                                                       'subfields': {'i': ['Rezension von'], 'w': ['(DE-627)' + ppn]}})
+                            create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
+                                                       'subfields': {'a': ['aurl'], '2': ['LOK']}})
+                            print('link created to ppn', ppn)
+                            review_links_created += 1
+                            if not is_theo[ppn_list_nr]:
+                                non_ixtheo_ppns.append(ppn)
+                    ppn_list_nr += 1
             check_abstract(record)
             journal_link_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="773"]'
                                             '/{http://www.loc.gov/MARC21/slim}subfield[@code="t"]')
@@ -291,16 +333,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             journal_name_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="JOU"]'
                                            '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
             journal_name_tag.text = journal_name_tag.text.strip('+')
-            isbn_list = re.findall(r'[^\d]((?:\d{3}[\- ])?(?:\d[\- ]?){10})', title)
-            for isbn in isbn_list:
-                # print(isbn)
-                isbn = re.sub(r'[\- ]', '', isbn)
-                isbn = isbn + 'x' if len(isbn) == 10 else isbn
-                # search_publication_with_isbn(isbn)
-            if discard:
-                discarded_nr += 1
-                continue
-            elif append_to_postprocess:
+            if append_to_postprocess:
                 '''if form_tag is not None:
                     if form_tag.text == 'Rezension':
                         create_marc_field(record, {'tag': '650', 'ind1': ' ', 'ind2': '4',
@@ -312,10 +345,18 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_json/' + zeder_id + '.json', 'r',
                               encoding="utf-8") as jstor_file:
                         jstor_dict = json.load(jstor_file)
-                        total_jstor_fails += add_jstor_links(record, jstor_dict, year, volume, issue, pagination)
+                        if add_jstor_links(record, jstor_dict, year, volume, issue, pagination):
+                            total_jstor_fails += 1
+                        else:
+                            total_jstor_links += 1
                 proper_root.append(record)
                 proper_nr += 1
-
+    if non_ixtheo_ppns:
+        with open(zeder_id + '_rezensierte_werke_nicht_ixtheo.csv', 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile, delimiter=';',
+                                    quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            for non_ixtheo_ppn in non_ixtheo_ppns:
+                csv_writer.writerow([non_ixtheo_ppn])
     proper_tree.write(zeder_id + '_proper.xml', encoding='utf-8', xml_declaration=True)
     if post_process_nr > 0:
         post_process_tree.write(zeder_id + '_post_process.xml', encoding='utf-8', xml_declaration=True)
@@ -328,5 +369,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     print('discarded by volume:', discarded_by_volume_nr)
     print('volumes discarded:', volumes_discarded)
     print('total jstor fails:', total_jstor_fails)
+    print('total jstor links:', total_jstor_links)
+    print('review links created:', review_links_created)
+
 
 # announcement, books and media received
