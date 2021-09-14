@@ -11,3 +11,4 @@ volume_files
 *.json
 !present_records.json
 get_records.py
+zotero_harvester_header.conf
