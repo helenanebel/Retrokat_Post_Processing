@@ -4,7 +4,7 @@ import json
 
 
 def get_records_with_missing_links(eppn, zid):
-    records_with_mising_links = []
+    records_with_missing_links = []
     empty_page = False
     start_nr = 1
     while not empty_page:
@@ -46,6 +46,11 @@ def get_records_with_missing_links(eppn, zid):
                     pages = source_information.find('subfield', code='h').text
                 else:
                     pages = None
-                records_with_mising_links.append({'title': title, 'author': author, 'year': year, 'volume': volume, 'issue': issue, 'pages': pages})
+                record_id = record.find('datafield', tag='003@').find('subfield', code='0').text
+                records_with_missing_links.append({'title': title, 'author': author, 'year': year, 'volume': volume, 'issue': issue, 'pages': pages, 'id': record_id})
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zid + '.json', 'w') as json_file:
-        json.dump(records_with_mising_links, json_file)
+        json.dump(records_with_missing_links, json_file)
+
+
+if __name__ == '__main__':
+    get_records_with_missing_links('341897612', '394')
