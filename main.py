@@ -5,9 +5,6 @@ import json
 
 if __name__ == '__main__':
     zeder_id = input('Bitte geben Sie die ZEDER-ID ein: ')
-    if zeder_id + '.json' not in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links'):
-        eppn = input('Bitte geben Sie die ePPN ein: ')
-        add_missing_links.get_records_with_missing_links(eppn, zeder_id)
     conf_dict = {}
     conf_available = False
     if 'conf.json' in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/'):
@@ -15,6 +12,10 @@ if __name__ == '__main__':
             conf_dict = json.load(conf_file)
             if zeder_id in conf_dict:
                 conf_available = True
+                if 'eppn' not in conf_dict[zeder_id]:
+                    conf_dict[zeder_id]['eppn'] = input('Bitte geben Sie die ePPN ein: ')
+                    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
+                        json.dump(conf_dict, conf_file)
     record_nr = check_and_split_in_issues(zeder_id, conf_available)
     if not conf_available:
         exclude = input('Bitte geben Sie die Liste auszuschließender Titel ein: ')
@@ -22,11 +23,14 @@ if __name__ == '__main__':
         start_year = int(input('Bitte geben Sie das erste Jahr der Retrokatalogisierung ein: '))
         end_year = int(input('Bitte geben Sie das letzte Jahr der Retrokatalogisierung ein: '))
         period = (start_year, end_year)
-        conf_dict[zeder_id] = {'exclude': exclude, 'period': period}
+        eppn = input('Bitte geben Sie die ePPN ein: ')
+        conf_dict[zeder_id] = {'exclude': exclude, 'period': period, 'eppn': eppn}
         if input('Wollen Sie diese Konfigurationsangaben speichern (j/n)') == 'j':
             with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
                 json.dump(conf_dict, conf_file)
     period = conf_dict[zeder_id]['period']
+    eppn = conf_dict[zeder_id]['eppn']
+    add_missing_links.get_records_with_missing_links(conf_dict[zeder_id]['eppn'], zeder_id)
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/exclude.json', 'r') as exclusion_file:
         exclude_everywhere = json.load(exclusion_file)
     exclude = conf_dict[zeder_id]['exclude'] + exclude_everywhere
