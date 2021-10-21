@@ -4,6 +4,9 @@ proper_files
 result_files
 result_files_processed
 volume_files
+final_files
+article_links
+review_links
 *.xml
 !example.xml
 !marcxml_empty.xml
