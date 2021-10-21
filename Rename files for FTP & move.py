@@ -1,22 +1,24 @@
 import os
 from shutil import copy2
 from time import strftime
+import json
 
 move_to_scp_server = ''
 commands = ''
-files_renamed = ''
 timestamp = strftime('%y%m%d')
 file_nr = 1
-for file in os.listdir('proper_files'):
-    if file not in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB'):
-        file_nr += 1
-        copy2('proper_files/' + file, 'W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/' + file)
-        new_filename_for_ftp = 'ixtheo_zotero_' + timestamp + '_' + str(file_nr).zfill(3) + '.xml'
-        copy2('proper_files/' + file, 'W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/' + new_filename_for_ftp)
-        files_renamed += file.ljust(16) + '=     ' + new_filename_for_ftp + '\n'
-        move_to_scp_server += '\npython3 upload_to_bsz_ftp_server.py ' + new_filename_for_ftp + ' /pub/UBTuebingen_Default_Test/'
-with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/files_renamed_on_' + timestamp + '.txt', 'a') as doku_file:
-    doku_file.write(files_renamed)
+with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/files_renamed.json', 'r') as renamed_files_file:
+    renamed_files = json.load(renamed_files_file)
+    for file in os.listdir('proper_files'):
+        if file not in renamed_files:
+            file_nr += 1
+            new_filename_for_ftp = 'ixtheo_zotero_' + timestamp + '_' + str(file_nr).zfill(3) + '.xml'
+            copy2('proper_files/' + file, 'W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/' + new_filename_for_ftp)
+            renamed_files[file] = new_filename_for_ftp
+            move_to_scp_server += '\npython3 upload_to_bsz_ftp_server.py ' + new_filename_for_ftp + ' /pub/UBTuebingen_Default_Test/'
+
+with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/files_renamed.json', 'w') as renamed_files_file:
+    json.dump(renamed_files, renamed_files_file)
 
 print(str(file_nr - 1), 'files renamed and moved to folder')
 
