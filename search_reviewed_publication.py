@@ -4,13 +4,21 @@ import re
 import unidecode
 
 
-def check_response_for_priority_of_results(xml_soup):
-    # print(xml_soup.find('zs:numberofrecords'))
-    SWB_ppns = []
-    theo_ppns = []
-    other_ppns = []
+def check_response_for_priority_of_results(xml_soup, review_year):
+    records_found = {}
     if xml_soup.find('zs:numberofrecords').text != '0':
         for record in xml_soup.find_all('record'):
+            year = None
+            if record.find('datafield', tag='011@'):
+                if record.find('datafield', tag='011@').find('subfield', code='a'):
+                    year = record.find('datafield', tag='011@').find('subfield', code='a').text
+                elif record.find('datafield', tag='011@').find('subfield', code='n'):
+                    year = record.find('datafield', tag='011@').find('subfield', code='n').text
+            try:
+                if int(year) > review_year:
+                    continue
+            except:
+                continue
             ppn = record.find('datafield', tag='003@').find('subfield', code='0').text
             ixtheo = False
             # hier den Record auswählen, der eine 1 als SSG Zeichen hat ODER ein anderes Kennzeichen
@@ -18,30 +26,36 @@ def check_response_for_priority_of_results(xml_soup):
             for ssg_tag in ['1', '0', '6,22']:
                 if ssg_tag in ssg_tags:
                     ixtheo = True
-                    print('found ssg')
+                    # print('found ssg')
                     break
             if not ixtheo:
                 cods = [element.find('subfield', code='a').text for element in record.find_all('datafield', tag='016B')]
                 for cod in ['mteo', 'redo', 'DTH5', 'AUGU', 'DAKR', 'MIKA', 'BIIN', 'KALD', 'GIRA']:
                     if cod in cods:
                         ixtheo = True
-                        print('found cod')
+                        # print('found cod')
                         break
-            if ixtheo:
-                theo_ppns.append(ppn)
-            elif record.find('datafield', tag='007G').find('subfield', code='i').text == 'BSZ':
-                SWB_ppns.append(ppn)
+            record_state = record.find('datafield', tag='002@').find('subfield', code='0').text
+            isbn = None
+            if record.find('datafield', tag='004A'):
+                if record.find('datafield', tag='004A').find('subfield', code='0'):
+                    isbn = record.find('datafield', tag='004A').find('subfield', code='0').text
+            is_bsz = False
+            if record.find('datafield', tag='007G').find('subfield', code='i').text == 'BSZ':
+                is_bsz = True
+            records_found[ppn] = {'record_state': record_state, 'is_bsz': is_bsz, 'ixtheo': ixtheo, 'isbn': isbn}
+        records_with_identical_isbn = {}
+        for ppn_found in records_found:
+            if records_found[ppn_found]['isbn'] not in records_with_identical_isbn:
+                records_with_identical_isbn[records_found[ppn_found]['isbn']] = [ppn_found]
             else:
-                other_ppns.append(ppn)
-    # print(theo_ppns)
-    # print(SWB_ppns)
-    # print(other_ppns)
-    if theo_ppns:
-        return theo_ppns, True
-    elif SWB_ppns:
-        return SWB_ppns, False
-    else:
-        return other_ppns, False
+                records_with_identical_isbn[records_found[ppn_found]['isbn']].append(ppn_found)
+        for isbn in records_with_identical_isbn:
+            if len(records_with_identical_isbn[isbn]) > 1:
+                # print(records_with_identical_isbn[isbn])
+                with open('identical_isbn_ppns.txt', 'a+') as identical_isbn_file:
+                    identical_isbn_file.write(str(records_with_identical_isbn[isbn]) + '\n')
+    return records_found
 
 
 def encode_in_ascii_and_remove_whitespaces_and_points(string: str, is_author, is_place):
@@ -59,12 +73,14 @@ def encode_in_ascii_and_remove_whitespaces_and_points(string: str, is_author, is
 # Probleme:
 # Plotinus, Self and the Wo rld (Leerzeichen innerhalb führen zu Problemen)
 
-def search_publication(title, author, year, place):
+
+def search_publication(title, author, year, place, review_year):
     pub_dict = {}
     pub_dict["tit"] = encode_in_ascii_and_remove_whitespaces_and_points(title, False, False)
     pub_dict["jah"] = encode_in_ascii_and_remove_whitespaces_and_points(year, False, False)
     if not pub_dict['jah']:
-        pub_dict["ver"] = encode_in_ascii_and_remove_whitespaces_and_points(place, False, True)
+        if place:
+            pub_dict["ver"] = encode_in_ascii_and_remove_whitespaces_and_points(place, False, True)
     author = author.replace('::', ' or ')
     author = encode_in_ascii_and_remove_whitespaces_and_points(author, True, False)
     pub_dict["per"] = '"' + author + '"'
@@ -74,20 +90,31 @@ def search_publication(title, author, year, place):
             if pub_dict[key] != 'null':
                 url += 'pica.' + key + '%3D' + pub_dict[key].strip('.') + '+and+'
     url = url.strip('+and+') + '&maximumRecords=10&recordSchema=picaxml'
-    print(url)
+    # print(url)
     xml_data = urllib.request.urlopen(url)
     xml_soup = BeautifulSoup(xml_data, features='lxml')
-    ppns, is_theo = check_response_for_priority_of_results(xml_soup)
-    return ppns, is_theo
+    if not xml_soup.find('zs:numberofrecords'):
+        print(url)
+        return [], [False]
+    records_found = check_response_for_priority_of_results(xml_soup, review_year)
+    return records_found
 
 
 def search_publication_with_isbn(isbn: str):
     url = 'http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.isb%3D' + isbn + '&maximumRecords=10&recordSchema=picaxml'
-    print(url)
+    # print(url)
     xml_data = urllib.request.urlopen(url)
     xml_soup = BeautifulSoup(xml_data, features='lxml')
-    ppns, is_theo = check_response_for_priority_of_results(xml_soup)
-    return ppns, is_theo
+    records_found = check_response_for_priority_of_results(xml_soup, 2021)
+    if not records_found:
+        if 'x' not in isbn.lower():
+            if (9 <= len(isbn) <= 10):
+                isbn = isbn + 'x'
+                url = 'http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.isb%3D' + isbn + '&maximumRecords=10&recordSchema=picaxml'
+                xml_data = urllib.request.urlopen(url)
+                xml_soup = BeautifulSoup(xml_data, features='lxml')
+                records_found = check_response_for_priority_of_results(xml_soup, 2021)
+    return records_found
 
 
 if __name__ == '__main__':
