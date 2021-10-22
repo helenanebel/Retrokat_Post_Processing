@@ -2,6 +2,7 @@ import os
 import add_missing_links
 from transform_MARCXML import transform, check_and_split_in_issues
 import json
+from create_jstor_link_dict import get_jstor_links
 
 if __name__ == '__main__':
     zeder_id = input('Bitte geben Sie die ZEDER-ID ein: ')
@@ -16,6 +17,8 @@ if __name__ == '__main__':
                     conf_dict[zeder_id]['eppn'] = input('Bitte geben Sie die ePPN ein: ')
                     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
                         json.dump(conf_dict, conf_file)
+    if zeder_id + '.json' not in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping'):
+        get_jstor_links(zeder_id)
     record_nr = check_and_split_in_issues(zeder_id, conf_available)
     if not conf_available:
         exclude = input('Bitte geben Sie die Liste auszuschließender Titel ein: ')
