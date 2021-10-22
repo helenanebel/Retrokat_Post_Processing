@@ -4,12 +4,14 @@ import json
 import re
 
 
-for file in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_csv'):
-    if file == '1350.csv':
+def create_jstor_url_dict(zeder_id: str):
+    if zeder_id + '.csv' not in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_csv'):
+        print('Keine JSTOR-Daten zu', zeder_id, 'gefunden.')
+        return False
+    else:
         total_nr = 0
         jstor_dict = {}
-        print(file)
-        with open ('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_csv/' + file, 'r', encoding="utf-8") as jstor_csv_file:
+        with open ('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_csv/' + zeder_id + '.csv', 'r', encoding="utf-8") as jstor_csv_file:
             jstor_csv = csv.reader(jstor_csv_file, quotechar='"', delimiter=',')
             row_nr = 0
             for row in jstor_csv:
@@ -68,11 +70,16 @@ for file in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_csv'):
                             veritable_volume = veritable_volumes[0]
                             if volume in jstor_dict[year][veritable_volume]:
                                 for pagination in jstor_dict[year][volume][issue]:
-                                    if pagination not in jstor_dict[year][veritable_volume]:
+                                    if pagination not in jstor_dict[year][veritable_volume][volume]:
                                         jstor_dict[year][veritable_volume][volume][pagination] = jstor_dict[year][volume][issue][pagination]
                         else:
-                            print(len(veritable_volumes), 'is not 1')
-                            print(veritable_volumes)
-        with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_json/' + file.replace('.csv', '.json'), 'w') as json_file:
+                            matching_volumes = [vol for vol in veritable_volumes if volume in jstor_dict[year][vol].keys()]
+                            if len(matching_volumes) == 1:
+                                matching_volume = matching_volumes[0]
+                                for pagination in jstor_dict[year][volume][issue]:
+                                    if pagination not in jstor_dict[year][matching_volume][volume]:
+                                        jstor_dict[year][matching_volume][volume][pagination] = jstor_dict[year][volume][issue][pagination]
+                                        print('added', year, matching_volume, volume, pagination)
+        with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_json/' + zeder_id + '.json', 'w') as json_file:
             json.dump(jstor_dict, json_file)
-        print(total_nr)
+        return True
