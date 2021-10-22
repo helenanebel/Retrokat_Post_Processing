@@ -1,7 +1,6 @@
 import json
 import re
 import xml.etree.ElementTree as ElementTree
-from transform_MARCXML import get_subfield, get_fields
 from convert_roman_numbers import from_roman
 
 month_dict = {	'January':'1',
@@ -16,6 +15,21 @@ month_dict = {	'January':'1',
 		'October':'10',
 		'November':'11',
 		'December':'12'		}
+
+
+def get_subfield(record, tag, subfield_code):
+    searchstring = '{http://www.loc.gov/MARC21/slim}datafield[@tag="' \
+                   + tag + '"]/{http://www.loc.gov/MARC21/slim}subfield[@code="' + subfield_code + '"]'
+    if record.find(searchstring) is None:
+        return None
+    return record.find(searchstring).text
+
+
+def get_fields(record, tag):
+    searchstring = '{http://www.loc.gov/MARC21/slim}datafield[@tag="' \
+                   + tag + '"]'
+    return record.findall(searchstring)
+
 
 def get_url_dict(zeder_id: str):
     result_tree = ElementTree.parse('result_files/' + zeder_id + '.xml')
@@ -76,12 +90,14 @@ def get_url_dict(zeder_id: str):
                     else:
                         if issue in month_dict:
                             issue = month_dict[issue]
-                            print(issue)
                         else:
                             print('not found in dict')
         pagination = get_subfield(record, '936', 'h')
         if pagination:
             if '-' in pagination:
+                if re.findall(r'\d+', pagination) and re.findall(r'[A-Za-z]', pagination):
+                    pagination = re.sub(r'(\d+).+?(\d+)', r'\1-\2', pagination)
+                    print('replaced', pagination)
                 if re.findall(r'(\d+)-(\d+)', pagination):
                     fpage, lpage = re.findall(r'(\d+)-(\d+)', pagination)[0]
                     if fpage == lpage:
