@@ -5,7 +5,6 @@ import re
 from search_reviewed_publication import search_publication, search_publication_with_isbn
 import csv
 from convert_roman_numbers import from_roman
-from add_jstor_links import add_jstor_links
 
 month_dict = {'January': '1', 'February': '2', 'March': '3', 'April': '4', 'May': '5',
               'June': '6', 'July': '7', 'August': '8', 'September': '9', 'October': '10',
@@ -189,7 +188,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     dois = []
     review_links = []
     jstor_dict = {}
-    all_volumes = []
     all_sources = {}
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zeder_id + '.json', 'r') as missing_link_file:
         records_with_missing_links = json.load(missing_link_file)
@@ -203,8 +201,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     if zeder_id + '_review_urls.json' in os.listdir('review_links'):
         with open('review_links/' + zeder_id + '_review_urls.json', 'r') as review_link_file:
             review_links = json.load(review_link_file)
-    if zeder_id + '.json' in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_json'):
-        with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_json/' + zeder_id + '.json', 'r',
+    if zeder_id + '.json' in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping'):
+        with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping/' + zeder_id + '.json', 'r',
                   encoding="utf-8") as jstor_file:
             jstor_dict = json.load(jstor_file)
     post_process_tree = ElementTree.parse('marcxml_empty.xml')
@@ -479,16 +477,11 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                 post_process_nr += 1
             else:
                 if jstor_dict:
-                    author_name = 'nn'
-                    if responsibles:
-                        author_name = responsibles[0].find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text
-                    if add_jstor_links(jstor_dict, str(year), str(volume), str(issue), pagination, author_name, url):
-                        total_jstor_fails += 1
-                        # print('jstor-fail', year, volume, issue, pagination, title, url)
-                        # print(jstor_dict)
-                        # print('_______________________________')
-                    else:
+                    if url in jstor_dict:
                         total_jstor_links += 1
+                        create_marc_field(record, {'tag': '866', 'ind1': ' ', 'ind2': ' ', 'subfields': {'x': ['JSTOR#' + jstor_dict[url]], '2': ['LOK']}})
+                    else:
+                        total_jstor_fails += 1
                 proper_root.append(record)
                 proper_nr += 1
     if non_ixtheo_ppns:
