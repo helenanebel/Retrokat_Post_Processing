@@ -66,8 +66,9 @@ def get_jstor_links(zeder_id: str):
                                                     names_list = [name.lower() for name in re.findall(r'\w+', jstor_author)]
                                                     if len([name for name in names_list if name in publisher_names_list]) >= 2:
                                                         if len(author_publication_list_jstor) != len(author_publication_list_publisher):
-                                                            print('different list length')
-                                                            print(author_publication_list_publisher, author_publication_list_jstor)
+                                                            pass
+                                                            # print('different list length')
+                                                            # print(author_publication_list_publisher, author_publication_list_jstor)
                                                             # Probleme bei:
                                                             # Review by: John Habgood
                                                             # http://www.jstor.org/stable/23959547
@@ -142,9 +143,10 @@ def get_jstor_links(zeder_id: str):
                                                                             name in publisher_names_list]) >= 2:
                                                                         if len(author_publication_list_jstor) != len(
                                                                                 author_publication_list_publisher):
-                                                                            print('different list length')
-                                                                            print(author_publication_list_publisher,
-                                                                                  author_publication_list_jstor)
+                                                                            pass
+                                                                            # print('different list length')
+                                                                            # print(author_publication_list_publisher,
+                                                                                  # author_publication_list_jstor)
                                                                             # Probleme bei:
                                                                             # Review by: John Habgood
                                                                             # http://www.jstor.org/stable/23959547
@@ -165,17 +167,14 @@ def get_jstor_links(zeder_id: str):
 
                                                     print(exc_type, fname, exc_tb.tb_lineno)
                                         if not pagination_found:
-                                            print('pagination not found')
-                                            print(pagination, year, volume, issue)
-                                            print([pag for pag in jstor_dict[year][volume][issue]])
+                                            pass
+                                            # print('pagination not found')
+                                            # print(pagination, year, volume, issue)
+                                            # print([pag for pag in jstor_dict[year][volume][issue]])
                                 else:
-                                    print('issue not found', year, volume, issue)
-
-
-                                        # hier die issues matchen!!
-
+                                    pass
+                                    # print('issue not found', year, volume, issue)
         print(total_nr, 'not matched:', total_nr - total_matches)
-        print(len(jstor_mapping_dict))
         with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping/' + zeder_id + '.json', 'w',
                       encoding="utf-8") as jstor_mapping_file:
                 json.dump(jstor_mapping_dict, jstor_mapping_file)
