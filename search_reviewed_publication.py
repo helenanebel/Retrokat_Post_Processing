@@ -36,6 +36,10 @@ def check_response_for_priority_of_results(xml_soup, review_year):
                         # print('found cod')
                         break
             record_state = record.find('datafield', tag='002@').find('subfield', code='0').text
+            if record.find('datafield', tag='006X'):
+                if re.search(r'^EPF', record.find('datafield', tag='006X').find('subfield', code='i').text):
+                    print('epf found:', ppn)
+                    continue
             isbn = None
             if record.find('datafield', tag='004A'):
                 if record.find('datafield', tag='004A').find('subfield', code='0'):
