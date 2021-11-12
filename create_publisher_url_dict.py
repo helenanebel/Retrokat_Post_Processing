@@ -45,10 +45,6 @@ def get_url_dict(zeder_id: str):
                 new_volume = re.findall(r'[^\d](\d{1,3})[^\d]', volume)
                 if new_volume:
                     volume = new_volume[0]
-                    volume_tag = \
-                        record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
-                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="d"]')
-                    volume_tag.text = volume
                 else:
                     if re.findall(r'^(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)$', volume):
                         new_volume = from_roman(
@@ -57,11 +53,7 @@ def get_url_dict(zeder_id: str):
                         new_volume = from_roman(
                             re.findall(r'(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)$', volume)[0])
                     if new_volume:
-                        volume_tag = \
-                            record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
-                                        '/{http://www.loc.gov/MARC21/slim}subfield[@code="d"]')
-                        volume_tag.text = str(new_volume)
-                        volume = new_volume
+                        volume = str(new_volume)
                     else:
                         print(volume, 'is not convertible to ararbic number')
         issue = get_subfield(record, '936', 'e')
@@ -69,10 +61,6 @@ def get_url_dict(zeder_id: str):
             if re.search(r'[^\d/]', issue):
                 if re.findall(r'(\d+).+?(\d+)', issue):
                     issue = re.sub(r'(\d+).+?(\d+)', r'\1/\2', issue)
-                    issue_tag = \
-                        record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
-                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="e"]')
-                    issue_tag.text = issue
                 else:
                     new_issue = ''
                     if re.findall(r'^(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)$', issue):
@@ -82,11 +70,7 @@ def get_url_dict(zeder_id: str):
                         new_issue = from_roman(
                             re.findall(r'(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)$', issue)[0])
                     if new_issue:
-                        issue_tag = \
-                            record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
-                                        '/{http://www.loc.gov/MARC21/slim}subfield[@code="d"]')
-                        issue_tag.text = str(new_issue)
-                        issue = new_issue
+                        issue = str(new_issue)
                     else:
                         if issue in month_dict:
                             issue = month_dict[issue]
@@ -97,14 +81,9 @@ def get_url_dict(zeder_id: str):
             if '-' in pagination:
                 if re.findall(r'\d+', pagination) and re.findall(r'[A-Za-z]', pagination):
                     pagination = re.sub(r'(\d+).+?(\d+)', r'\1-\2', pagination)
-                    print('replaced', pagination)
                 if re.findall(r'(\d+)-(\d+)', pagination):
                     fpage, lpage = re.findall(r'(\d+)-(\d+)', pagination)[0]
                     if fpage == lpage:
-                        pagination_tag = \
-                            record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
-                                        '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
-                        pagination_tag.text = fpage
                         pagination = fpage
         responsibles = [field.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text for field in get_fields(record, '100') + get_fields(record, '700')]
         author = 'nn'
