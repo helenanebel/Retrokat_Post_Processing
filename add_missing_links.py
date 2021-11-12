@@ -18,6 +18,9 @@ def get_records_with_missing_links(eppn, zid):
             continue
         start_nr += 100
         for record in xml_soup.find('zs:records').find_all('zs:record'):
+            record_state = record.find('datafield', tag='002@').find('subfield', code='0').text
+            if record_state[1] != 's':
+                continue
             if record.find('datafield', tag='017C'):
                 pass
             else:
@@ -34,24 +37,30 @@ def get_records_with_missing_links(eppn, zid):
                 else:
                     author = None
                 source_information = record.find('datafield', tag='031A')
-                if source_information.find('subfield', code='j'):
-                    year = source_information.find('subfield', code='j').text
-                else:
-                    year = None
-                if source_information.find('subfield', code='d'):
-                    volume = source_information.find('subfield', code='d').text
-                else:
-                    volume = None
-                if source_information.find('subfield', code='e'):
-                    issue = source_information.find('subfield', code='e').text
-                else:
-                    issue = None
-                if source_information.find('subfield', code='h'):
-                    pages = source_information.find('subfield', code='h').text
-                else:
-                    pages = None
-                record_id = record.find('datafield', tag='003@').find('subfield', code='0').text
-                records_with_missing_links.append({'title': title, 'author': author, 'year': year, 'volume': volume, 'issue': issue, 'pages': pages, 'doi': doi, 'id': record_id})
+                try:
+                    if source_information.find('subfield', code='j'):
+                        year = source_information.find('subfield', code='j').text
+                    else:
+                        year = None
+                    if source_information.find('subfield', code='d'):
+                        volume = source_information.find('subfield', code='d').text
+                    else:
+                        volume = None
+                    if source_information.find('subfield', code='e'):
+                        issue = source_information.find('subfield', code='e').text
+                    else:
+                        issue = None
+                    if source_information.find('subfield', code='h'):
+                        pages = source_information.find('subfield', code='h').text
+                    else:
+                        pages = None
+                    record_id = record.find('datafield', tag='003@').find('subfield', code='0').text
+                    records_with_missing_links.append(
+                        {'title': title, 'author': author, 'year': year, 'volume': volume, 'issue': issue,
+                         'pages': pages, 'doi': doi, 'id': record_id})
+                except Exception as e:
+                    print(record)
+
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zid + '.json', 'w') as json_file:
         json.dump(records_with_missing_links, json_file)
 
