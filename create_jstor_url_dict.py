@@ -21,11 +21,11 @@ def create_jstor_url_dict(zeder_id: str):
                 if 'http://www.' not in row[0]:
                     continue
                 year = row[3]
-                issue = row[8]
-                volume = row[9]
-                firstpage = row[14]
-                lastpage = row[15]
-                author = row[11]
+                issue = row[10]
+                volume = row[11]
+                firstpage = row[16]
+                lastpage = row[17]
+                author = row[13]
                 if not firstpage:
                     continue
                 if firstpage == lastpage:
