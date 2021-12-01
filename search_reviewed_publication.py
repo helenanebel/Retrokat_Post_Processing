@@ -68,7 +68,7 @@ def encode_in_ascii_and_remove_whitespaces_and_points(string: str, is_author, is
     elif is_place:
         list_of_letters = [re.findall(r'[\w]+', string)[0]]
     else:
-        list_of_letters = [word if word.lower() not in ['all', 'or', 'and'] else "'" + word for word in re.findall(r'\w+', string)]
+        list_of_letters = [word if word.lower() not in ['all', 'or', 'and', 'any'] else "'" + word for word in re.findall(r'\w+', string)]
     decoded_string = '+'.join(list_of_letters)
     decoded_string = unidecode.unidecode(decoded_string)
     decoded_string = decoded_string.strip('+')
@@ -99,7 +99,7 @@ def search_publication(title, author, year, place, review_year):
     xml_soup = BeautifulSoup(xml_data, features='lxml')
     if not xml_soup.find('zs:numberofrecords'):
         print(url)
-        return [], [False]
+        return {}
     records_found = check_response_for_priority_of_results(xml_soup, review_year)
     return records_found
 
