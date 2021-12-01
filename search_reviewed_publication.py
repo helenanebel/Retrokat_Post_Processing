@@ -54,11 +54,6 @@ def check_response_for_priority_of_results(xml_soup, review_year):
                 records_with_identical_isbn[records_found[ppn_found]['isbn']] = [ppn_found]
             else:
                 records_with_identical_isbn[records_found[ppn_found]['isbn']].append(ppn_found)
-        for isbn in records_with_identical_isbn:
-            if len(records_with_identical_isbn[isbn]) > 1:
-                # print(records_with_identical_isbn[isbn])
-                with open('identical_isbn_ppns.txt', 'a+') as identical_isbn_file:
-                    identical_isbn_file.write(str(records_with_identical_isbn[isbn]) + '\n')
     return records_found
 
 
