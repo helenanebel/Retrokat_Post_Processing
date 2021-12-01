@@ -85,8 +85,7 @@ def get_jstor_links(zeder_id: str):
 
                                         total_nr += 1
                                         pagination_found = False
-                                        for p in [p for p in jstor_dict[year][volume][issue]
-                                                  if re.findall(r'^' + p.split('-')[0] + '-', pagination)]:
+                                        for p in [p.replace('*', '') for p in jstor_dict[year][volume][issue] if re.findall(r'^' + p.replace('*', '').split('-')[0] + '-', pagination)]:
                                                 try:
                                                     if '-' in p:
                                                         difference = abs(int(p.split('-')[1]) - int(pagination.split('-')[1]))
