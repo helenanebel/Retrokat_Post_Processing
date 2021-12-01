@@ -442,7 +442,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                 all_ppns = [record for record in records_found]
                 ppn_nr = 0
                 comment = 'Rezensionsverknüpfungen ['
-                print(all_ppns)
                 for ppn in all_ppns:
                     ppns_linked.append(ppn)
                     create_marc_field(record, {'tag': '787', 'ind1': '0', 'ind2': '8',
