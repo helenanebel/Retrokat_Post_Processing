@@ -40,13 +40,13 @@ def check_abstract(record):
     abstract_tag = record.find \
         ('{http://www.loc.gov/MARC21/slim}datafield[@tag="520"]/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
     if abstract_tag is not None:
-        if re.search(r'^.{1,125}Article .+ was published on .+ in the journal .+ (.+).', abstract_tag.text, re.IGNORECASE):
+        if re.search(r'^.{0,125}Article .+ was published on .+ in the journal .+ (.+).', abstract_tag.text, re.IGNORECASE):
             abstract_tags = get_fields(record, '520')
             for abstract_tag in abstract_tags:
                 # print('deleted abstract-tag')
                 record.remove(abstract_tag)
         elif re.search \
-                (r'^.{1,125},\s+Volume\s+(os-)?(\d+|[CcLlXxVvIi]+),\s+Issue\s+[\d–\-/CcLlXxVvIi]+,\s+.+,\s+Pages(\s+[\dCcLlXxVvIi]+[\d–a-zA-Z]*,)?', abstract_tag.text, re.IGNORECASE):
+                (r'^.{0,125},\s+Volume\s+(os-)?(\d+|[CcLlXxVvIi]+),\s+Issue\s+[\d–\-/CcLlXxVvIi]+,\s+.+,\s+Pages(\s+[\dCcLlXxVvIi]+[\d–a-zA-Z]*,)?', abstract_tag.text, re.IGNORECASE):
             abstract_tags = get_fields(record, '520')
             for abstract_tag in abstract_tags:
                 # print('deleted abstract-tag')
@@ -291,11 +291,11 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                            'subfields': {'a': ['nbrk'], '2': ['LOK']}})
             author = get_subfield(record, '100', 'a')
             # Dubletten im Ergebnis herausfiltern:
-            if source in all_sources:
+            if source in all_sources and zeder_id == '1157b':
                 previous_title = all_sources[source]['title']
                 previous_author = all_sources[source]['author']
                 if (previous_title == title) and (previous_author == author):
-                    # print('same title and author:', source)
+                    print('same title and author:', source, url)
                     discarded_nr += 1
                     continue
             all_sources[source] = {'title': title, 'author': author}
@@ -401,6 +401,12 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     gnd_link = responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="0"]')
                     if gnd_link is not None:
                         responsible.remove(gnd_link)
+            if url in review_links:
+                create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
+                                               'subfields': {'a': ['Rezension'],
+                                                             '0': ['(DE-588)4049712-4', '(DE-627)106186019'],
+                                                             '2': ['gnd-content']}})
+                review_links.remove(url)
             form_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="655"][@ind2="7"]'
                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
             is_review = False
@@ -436,6 +442,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                 all_ppns = [record for record in records_found]
                 ppn_nr = 0
                 comment = 'Rezensionsverknüpfungen ['
+                print(all_ppns)
                 for ppn in all_ppns:
                     ppns_linked.append(ppn)
                     create_marc_field(record, {'tag': '787', 'ind1': '0', 'ind2': '8',
@@ -461,16 +468,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                 non_ixtheo_ppns.append([record for record in record_list if state in records_found[record]['record_state']][0])
                                 # print([record for record in record_list if state in records_found[record]['record_state']][0])
                                 break
-
-            
-            if not is_review:
-                if url in review_links:
-                    create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
-                                               'subfields': {'a': ['Rezension'],
-                                                             '0': ['(DE-588)4049712-4', '(DE-627)106186019'],
-                                                             '2': ['gnd-content']}})
-                    review_links.remove(url)
-
             check_abstract(record)
             journal_link_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="773"]'
                                             '/{http://www.loc.gov/MARC21/slim}subfield[@code="t"]')
@@ -479,16 +476,18 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             journal_name_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="JOU"]'
                                            '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
             journal_name_tag.text = journal_link_tag.text
+            if jstor_dict:
+                if url in jstor_dict:
+                    total_jstor_links += 1
+                    create_marc_field(record, {'tag': '866', 'ind1': ' ', 'ind2': ' ',
+                                               'subfields': {'x': ['JSTOR#' + jstor_dict[url]], '2': ['LOK']}})
+                else:
+                    total_jstor_fails += 1
             if append_to_postprocess:
                 post_process_root.append(record)
                 post_process_nr += 1
             else:
-                if jstor_dict:
-                    if url in jstor_dict:
-                        total_jstor_links += 1
-                        create_marc_field(record, {'tag': '866', 'ind1': ' ', 'ind2': ' ', 'subfields': {'x': ['JSTOR#' + jstor_dict[url]], '2': ['LOK']}})
-                    else:
-                        total_jstor_fails += 1
+
                 proper_root.append(record)
                 proper_nr += 1
     if non_ixtheo_ppns:
