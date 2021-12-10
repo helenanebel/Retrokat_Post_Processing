@@ -74,6 +74,9 @@ def encode_in_ascii_and_remove_whitespaces_and_points(string: str, is_author, is
 
 
 def search_publication(title, author, year, place, review_year):
+    if (title.count(" ") < 2) and not year and not place:
+        print('title too short', title, '--', author, '--', year, '--', place, '--', review_year)
+        return {}
     pub_dict = {}
     pub_dict["tit"] = encode_in_ascii_and_remove_whitespaces_and_points(title, False, False)
     pub_dict["jah"] = encode_in_ascii_and_remove_whitespaces_and_points(year, False, False)
