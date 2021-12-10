@@ -79,8 +79,9 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                         raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" &> "{1}.out";\n'
                         harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(vr_nr), title)
                         sh_file.write('wait;' + harvesting_command)
-                        sh_file.write('wait; sleep 1m 12s;\n')
-                        waiting_time += 72
+                        if do_harvest == ['333']:
+                            sh_file.write('wait; sleep 1m 12s;\n')
+                            waiting_time += 72
                         if conf_nr % 180 == 0:
                             if do_harvest == ['333']:
                                 sh_file.write('wait; sleep 60m;\n')
