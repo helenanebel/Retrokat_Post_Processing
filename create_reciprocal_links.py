@@ -10,7 +10,7 @@ def get_results(xml_soup, journal_ppn, ppn):
         for record in xml_soup.find_all('record'):
             if record.find('datafield', tag='002@').find('subfield', code='0').text == 'Osn':
                 found_ppn = record.find('datafield', tag='003@').find('subfield', code='0').text
-                print(found_ppn)
+                # print(found_ppn)
                 if record.find('datafield', tag='039B').find('subfield', code='9').text == journal_ppn:
                     # hier muss über die Liste aller rezensierten Werke iteriert werden!
                     reviewed_works_a = [datafield.find('subfield', code='9').text for datafield in record.find_all('datafield', tag='039P')]
@@ -26,7 +26,6 @@ def get_results(xml_soup, journal_ppn, ppn):
 
 def search_review(ppn, journal_ppn):
     url = 'http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.1049%3D{0}+and+pica.1045%3Drel-tt+and+pica.1001%3Db&maximumRecords=5&recordSchema=picaxml'.format(ppn)
-    print(url)
     xml_data = urllib.request.urlopen(url)
     xml_soup = BeautifulSoup(xml_data, features='lxml')
     review_ppn = get_results(xml_soup, journal_ppn, ppn)
@@ -45,8 +44,8 @@ def get_ppns_for_reciprocal_links(zeder_id, journal_ppn):
     with open(zeder_id + '_review_ppns_to_add.csv', 'w', newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for ppn in review_ppn_list:
-            csv_writer.writerow([ppn, "4262 Rezensiert in!" + review_ppn_list[ppn] + "!"])
+            csv_writer.writerow([ppn, review_ppn_list[ppn]])
 
 
 if __name__ == '__main__':
-    get_ppns_for_reciprocal_links('1098', '368910555')
+    get_ppns_for_reciprocal_links('1184', '35786574X')
