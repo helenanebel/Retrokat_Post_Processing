@@ -168,7 +168,8 @@ def check_and_split_in_issues(zeder_id, conf_available):
     return record_nr
 
 
-def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int, int], record_nr):
+def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int, int], record_nr, default_lang: str):
+    responsibles_corrected = {}
     total_jstor_fails = 0
     total_jstor_links = 0
     review_links_created = 0
@@ -177,6 +178,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     discarded_nr = 0
     discarded_by_volume_nr = 0
     proper_nr = 0
+    deduplicate_nr = 0
     volume_list = [str(year) for year in range(volumes_to_catalogue[0], volumes_to_catalogue[1] + 1)]
     non_ixtheo_ppns = []
     ppns_linked = []
@@ -184,6 +186,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     links_to_add_nr = 0
     urls = []
     dois = []
+    excluded_titles = []
     review_links = []
     jstor_dict = {}
     all_sources = {}
@@ -207,6 +210,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     post_process_root = post_process_tree.getroot()
     proper_tree = ElementTree.parse('marcxml_empty.xml')
     proper_root = proper_tree.getroot()
+    deduplicate_tree = ElementTree.parse('marcxml_empty.xml')
+    deduplicate_root = deduplicate_tree.getroot()
     for file in os.listdir('volume_files'):
         ElementTree.register_namespace('', "http://www.loc.gov/MARC21/slim")
         result_tree = ElementTree.parse('volume_files/' + file)
@@ -219,6 +224,18 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             doi = get_subfield(record, '024', 'a')
             year = get_subfield(record, '264', 'c')
             volume = get_subfield(record, '936', 'd')
+            if doi:
+                if doi in dois:
+                    discarded_nr += 1
+                    deduplicate_nr += 1
+                    continue
+            if url in urls:
+                discarded_nr += 1
+                deduplicate_nr += 1
+                continue
+            deduplicate_root.append(record)
+            urls.append(url)
+            dois.append(doi)
             differences_from_source = False
             if volume:
                 if re.search(r'[^\d/]', volume):
@@ -299,15 +316,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     discarded_nr += 1
                     continue
             all_sources[source] = {'title': title, 'author': author}
-            if doi:
-                if doi in dois:
-                    discarded_nr += 1
-                    continue
-            if url in urls:
-                discarded_nr += 1
-                continue
-            urls.append(url)
-            dois.append(doi)
             if [year in missing_link_lookup_years]:
                 for entry in [entry for entry in records_with_missing_links if entry['year'] == year]:
                     if ('volume' in entry) and ('issue' in entry) and ('pages' in entry):
@@ -347,7 +355,17 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     else:
                         append_to_postprocess = True
             else:
-                append_to_postprocess = True
+                print('no pagination:', url)
+                #append_to_postprocess = True
+            language_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]')
+            if not language_tag:
+                print('no language', title)
+                if default_lang != "":
+                    create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
+                                               'subfields': {'a': [default_lang]}})
+                else:
+                    create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
+                                           'subfields': {'a': ['nbrk'], '2': ['LOK']}})
             if zeder_id in present_record_list:
                 delete_entries = []
                 if [year in present_record_lookup_years]:
@@ -384,6 +402,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                         present_record_list[zeder_id].remove(entry)
             for exclude_regex in exclude:
                 if re.search(exclude_regex, get_subfield(record, '245', 'a'), re.IGNORECASE):
+                    if title not in excluded_titles:
+                        excluded_titles.append(title)
                     discard = True
             if discard:
                 discarded_nr += 1
@@ -394,7 +414,15 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                            'subfields': {'a': ['erco'], '2': ['LOK']}})
                 # Abrufzeichen für die Nachbearbeitung von Errata/Corrigenda!
             responsibles = get_fields(record, '100') + get_fields(record, '700')
+            # print(len(responsibles), url)
             for responsible in responsibles:
+                responsible_name = responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text
+                if len(responsibles) == 1:
+                    if re.match(r', [^\s+]+?', responsible_name):
+                        responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = responsible_name.replace(', ', '')
+                        responsible.attrib['ind1'] = '0'
+                        if responsible_name not in responsibles_corrected:
+                            responsibles_corrected[responsible_name] = url
                 if re.match(r'^,', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
                     append_to_postprocess = True
                 if re.match(r'^\w\., \w\.$', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
@@ -428,8 +456,14 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                                              '2': ['gnd-content']}})
             elif form_tag.text == "Rezension":
                 is_review = True
+            records_found, review_title = create_review_link(record)
+            if review_title and not is_review:
+                is_review = True
+                create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
+                                           'subfields': {'a': ['Rezension'],
+                                                         '0': ['(DE-588)4049712-4', '(DE-627)106186019'],
+                                                         '2': ['gnd-content']}})
             if is_review:
-                records_found, review_title = create_review_link(record)
                 if review_title:
                     if len(title) < 60:
                         create_marc_field(record, {'tag': '246', 'ind1': '1', 'ind2': ' ',
@@ -448,8 +482,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                                'subfields': {'i': ['Rezension von'], 'w': ['(DE-627)' + ppn]}})
                     review_links_created += 1
                     if ppn_nr == 0:
-                        create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
-                                                   'subfields': {'a': ['aurl'], '2': ['LOK']}})
+                        # create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ', 'subfields': {'a': ['aurl'], '2': ['LOK']}})
                         comment += 'PPN ' + ppn
                     else:
                         comment += ' | PPN ' + ppn
@@ -507,17 +540,22 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
         post_process_tree.write(zeder_id + '_post_process.xml', encoding='utf-8', xml_declaration=True)
     if zeder_id in present_record_list:
         print('missing doublets:', present_record_list[zeder_id])
+    if deduplicate_nr > 0:
+        deduplicate_tree.write(zeder_id + '_deduplicated.xml', encoding='utf-8', xml_declaration=True)
     print('total number of records harvested:', record_nr)
     print('proper:', proper_nr)
     print('post_process:', post_process_nr)
     print('discarded:', discarded_nr + discarded_by_volume_nr)
     print('discarded by volume:', discarded_by_volume_nr)
+    print('duplicate records in result:', deduplicate_nr)
     print('volumes discarded:', volumes_discarded)
     print('total jstor fails:', total_jstor_fails)
     print('total jstor links:', total_jstor_links)
     print('review links created:', review_links_created)
     print('found missing links to add:', links_to_add_nr)
-    print(review_links)
+    print('excluded titles:', excluded_titles)
+    print('responsibles corrected', responsibles_corrected)
+    print('review links', review_links)
 
 
 # announcement, books and media received
