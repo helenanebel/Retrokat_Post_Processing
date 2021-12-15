@@ -3,7 +3,7 @@ import os
 import re
 import urllib.request
 from bs4 import BeautifulSoup
-from get_records_download_failed import get_urls
+from get_urls_download_failed import get_urls
 
 with open('zotero_harvester_header.conf', 'r') as zotero_harvester_header_file:
     zotero_harvester_header = zotero_harvester_header_file.read()
