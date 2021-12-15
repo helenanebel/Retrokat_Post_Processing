@@ -13,6 +13,7 @@ final_additional_information
 !marcxml_empty.xml
 *.csv
 *.json
+*.out
 !present_records.json
 get_records.py
 zotero_harvester_header.conf
