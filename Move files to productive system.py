@@ -13,6 +13,9 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_ProduktivDB/files_r
     file_nr_for_filename += len(
         [renamed_files[filename] for filename in renamed_files if timestamp + '_' in renamed_files[filename]])
     for file in os.listdir('final_files'):
+        if '.xml' not in file:
+            print(file)
+            continue
         if file not in renamed_files:
             file_nr_for_filename += 1
             file_nr += 1
