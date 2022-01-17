@@ -5,6 +5,8 @@ import re
 from search_reviewed_publication import search_publication, search_publication_with_isbn
 import csv
 from convert_roman_numbers import from_roman
+from bs4 import BeautifulSoup
+import urllib.request
 
 month_dict = {'January': '1', 'February': '2', 'March': '3', 'April': '4', 'May': '5',
               'June': '6', 'July': '7', 'August': '8', 'September': '9', 'October': '10',
@@ -163,7 +165,8 @@ def check_and_split_in_issues(zeder_id, conf_available):
         if input("Show titles with multiple occurence and missing authors? (y/n) ") == 'y':
             conf_available = False
     if not conf_available:
-        print([beginning for beginning in all_title_beginnings if all_title_beginnings[beginning] > 3])
+        treshold = record_nr/1000 if record_nr >= 3000 else 2
+        print([beginning for beginning in all_title_beginnings if all_title_beginnings[beginning] > treshold])
         print(missing_authors)
     return record_nr
 
@@ -180,6 +183,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     proper_nr = 0
     deduplicate_nr = 0
     volume_list = [str(year) for year in range(volumes_to_catalogue[0], volumes_to_catalogue[1] + 1)]
+    source_ppn = ""
+    found_volume_list = []
     non_ixtheo_ppns = []
     ppns_linked = []
     links_to_add = {}
@@ -223,6 +228,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             url = get_subfield(record, '856', 'u')
             doi = get_subfield(record, '024', 'a')
             year = get_subfield(record, '264', 'c')
+            if year not in found_volume_list:
+                found_volume_list.append(year)
             volume = get_subfield(record, '936', 'd')
             if doi:
                 if doi in dois:
@@ -303,10 +310,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             pagination = get_subfield(record, '936', 'h')
             source = get_subfield(record, '773', 'g')
             title = get_subfield(record, '245', 'a')
-            if '$$' in title:
-                create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
-                                           'subfields': {'a': ['nbrk'], '2': ['LOK']}})
             author = get_subfield(record, '100', 'a')
+            source_ppn = get_subfield(record, '773', 'w').replace('(DE-627)', '')
             # Dubletten im Ergebnis herausfiltern:
             if source in all_sources and zeder_id == '1157b':
                 previous_title = all_sources[source]['title']
@@ -335,12 +340,18 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                 continue
             for datafield in record.findall('{http://www.loc.gov/MARC21/slim}datafield'):
                 if datafield.attrib['tag'] == '935':
+                    if datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text \
+                            not in ['mteo', 'zota', 'nbrk', 'erco', 'ixzs', 'ixrk']:
+                        print('deleted retrieve sign', datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
                     record.remove(datafield)
             for retrieve_sign in ['ixzs', 'ixrk', 'zota']:
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ', 
                                            'subfields': {'a': [retrieve_sign], '2': ['LOK']}})
             create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                        'subfields': {'a': ['mteo']}})
+            if '$$' in title:
+                create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
+                                           'subfields': {'a': ['nbrk'], '2': ['LOK']}})
             if pagination:
                 if '-' in pagination:
                     if re.findall(r'\d+', pagination) and re.findall(r'[A-Za-z]', pagination):
@@ -378,6 +389,10 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                 else:
                                     if 'doi' in entry:
                                         if entry['doi'] == doi:
+                                            delete_entries.append(entry)
+                                            discard = True
+                                    if 'url' in entry:
+                                        if entry['url'] == url:
                                             delete_entries.append(entry)
                                             discard = True
                                     found = re.search(entry['title'], title, re.IGNORECASE)
@@ -425,10 +440,12 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                             responsibles_corrected[responsible_name] = url
                 if re.match(r'^,', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
                     append_to_postprocess = True
-                if re.match(r'^\w\., \w\.$', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
+                if re.match(r'^\w\., (?:\w\.\s?)+$', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
                     gnd_link = responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="0"]')
                     if gnd_link is not None:
                         responsible.remove(gnd_link)
+                    responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = re.sub(r'^(\w\.), ((?:\w\.\s?)+)$', r'\2 \1', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
+                    responsible.attrib['ind1'] = '0'
             if url in review_links:
                 create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
                                                'subfields': {'a': ['Rezension'],
@@ -538,24 +555,53 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     proper_tree.write(zeder_id + '_proper.xml', encoding='utf-8', xml_declaration=True)
     if post_process_nr > 0:
         post_process_tree.write(zeder_id + '_post_process.xml', encoding='utf-8', xml_declaration=True)
-    if zeder_id in present_record_list:
-        print('missing doublets:', present_record_list[zeder_id])
     if deduplicate_nr > 0:
         deduplicate_tree.write(zeder_id + '_deduplicated.xml', encoding='utf-8', xml_declaration=True)
-    print('total number of records harvested:', record_nr)
-    print('proper:', proper_nr)
-    print('post_process:', post_process_nr)
-    print('discarded:', discarded_nr + discarded_by_volume_nr)
-    print('discarded by volume:', discarded_by_volume_nr)
-    print('duplicate records in result:', deduplicate_nr)
-    print('volumes discarded:', volumes_discarded)
-    print('total jstor fails:', total_jstor_fails)
-    print('total jstor links:', total_jstor_links)
-    print('review links created:', review_links_created)
-    print('found missing links to add:', links_to_add_nr)
-    print('excluded titles:', excluded_titles)
-    print('responsibles corrected', responsibles_corrected)
-    print('review links', review_links)
+    with open('statistics_' + zeder_id + '.txt', 'w', encoding='utf-8') as statistics_file:
+        if zeder_id in present_record_list:
+            print('missing doublets:', present_record_list[zeder_id])
+            statistics_file.write('missing doublets:' + present_record_list[zeder_id] + '\n')
+        missing_volumes = [volume for volume in volume_list if volume not in found_volume_list]
+        if missing_volumes:
+            input('Zur Kenntnisnahme: Die Bände ' + str(missing_volumes) + ' fehlen')
+            statistics_file.write('Zur Kenntnisnahme: Die Bände ' + str(missing_volumes) + ' fehlen' + '\n')
+        url = "http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml".format(source_ppn)
+        xml_data = urllib.request.urlopen(url)
+        xml_soup = BeautifulSoup(xml_data, features='lxml')
+        for record in xml_soup.find_all('record'):
+            journal_title = record.find('datafield', tag='021A').find('subfield', code='a').text
+            if record.find('datafield', tag='002@').find('subfield', code='0').text == 'Obv':
+                input('Der Titel lautet: ' + journal_title + ', es handelt sich um eine Online-Aufnahme')
+            else:
+                input('Der Titel lautet: ' + journal_title + ', es handelt sich NICHT um eine Online-Aufnahme')
+        statistics_file.write('total number of records harvested:' + str(record_nr) + '\n')
+        statistics_file.write('proper:' + str(proper_nr) + '\n')
+        statistics_file.write('post_process:' + str(post_process_nr) + '\n')
+        statistics_file.write('discarded:' + str(discarded_nr + discarded_by_volume_nr) + '\n')
+        statistics_file.write('discarded by volume:' + str(discarded_by_volume_nr) + '\n')
+        statistics_file.write('duplicate records in result:' + str(deduplicate_nr) + '\n')
+        statistics_file.write('volumes discarded:' + str(volumes_discarded) + '\n')
+        statistics_file.write('total jstor fails:' + str(total_jstor_fails) + '\n')
+        statistics_file.write('total jstor links:' + str(total_jstor_links) + '\n')
+        statistics_file.write('review links created:' + str(review_links_created) + '\n')
+        statistics_file.write('found missing links to add:' + str(links_to_add_nr) + '\n')
+        statistics_file.write('excluded titles:' + str(excluded_titles) + '\n')
+        statistics_file.write('responsibles corrected' + str(responsibles_corrected) + '\n')
+        statistics_file.write('review links' + str(review_links) + '\n')
+        print('total number of records harvested:', record_nr)
+        print('proper:', proper_nr)
+        print('post_process:', post_process_nr)
+        print('discarded:', discarded_nr + discarded_by_volume_nr)
+        print('discarded by volume:', discarded_by_volume_nr)
+        print('duplicate records in result:', deduplicate_nr)
+        print('volumes discarded:', volumes_discarded)
+        print('total jstor fails:', total_jstor_fails)
+        print('total jstor links:', total_jstor_links)
+        print('review links created:', review_links_created)
+        print('found missing links to add:', links_to_add_nr)
+        print('excluded titles:', excluded_titles)
+        print('responsibles corrected', responsibles_corrected)
+        print('review links', review_links)
 
 
 # announcement, books and media received
