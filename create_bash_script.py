@@ -1,16 +1,17 @@
 import json
 import os
 import re
-import urllib.request
-from bs4 import BeautifulSoup
 from get_urls_download_failed import get_urls
+from datetime import datetime
 
 with open('zotero_harvester_header.conf', 'r') as zotero_harvester_header_file:
     zotero_harvester_header = zotero_harvester_header_file.read()
 
 upload_files = []
 all_zids = []
-download_command_file = open('C:/Users/hnebel/Documents/download_commands.txt', 'w')
+time = datetime.now()
+timestamp = time.strftime("%y-%m-%d__%H_%M")
+download_command_file = open('C:/Users/hnebel/Documents/download_commands_' + timestamp + '.txt', 'w')
 total_journal_number = 0
 is_vr = False
 with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as sh_file:
@@ -133,13 +134,13 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                         harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(vr_nr), title)
                         sh_file.write('wait;' + harvesting_command)
                         if do_harvest == ['333']:
-                            sh_file.write('wait; sleep 1m 12s;\n')
+                            sh_file.write('wait; sleep 30s;\n')
                             waiting_time += 72
-                        if conf_nr % 180 == 0:
+                        if conf_nr % 515 == 0:
                             if do_harvest == ['333']:
-                                sh_file.write('wait; sleep 60m;\n')
-                                waiting_time += 3600
-                            sh_file.write('wait; sudo systemctl restart zts;\n')
+                                sh_file.write('wait; sleep 1d;\n')
+                                waiting_time += 86400
+                            # sh_file.write('wait; sudo systemctl restart zts;\n')
                         conf_nr += 1
                     print(vr_nr)
                     vr_file.close()
