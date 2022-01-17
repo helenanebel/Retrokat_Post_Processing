@@ -1,5 +1,6 @@
 import os
 import xml.etree.ElementTree as ElementTree
+import re
 
 
 def merge_journal_records():
@@ -9,8 +10,9 @@ def merge_journal_records():
     zeder_id = input('Bitte geben Sie die ZEDER-ID der zusammenzuführenden Records ein: ')
     record_nr = 0
     for file in os.listdir('multiple_crawl'):
-        if zeder_id in file:
+        if re.findall('^' + zeder_id + '_', file) or zeder_id + '+' in file or file == zeder_id + '.xml':
             try:
+                print(file)
                 tree = ElementTree.parse('multiple_crawl/' + file)
                 root = tree.getroot()
                 records = root.findall('.//{http://www.loc.gov/MARC21/slim}record')
@@ -21,7 +23,8 @@ def merge_journal_records():
                         print(record_nr)
                     complete_root.append(record)
             except:
-                print(file)
+                print('no xml:', file)
+    print("total records:", record_nr)
     complete_tree.write('result_files/' + zeder_id + '.xml', encoding='utf-8', xml_declaration=True)
 
 
