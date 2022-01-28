@@ -135,11 +135,11 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                         sh_file.write('wait;' + harvesting_command)
                         if do_harvest == ['333']:
                             sh_file.write('wait; sleep 30s;\n')
-                            waiting_time += 72
-                        if conf_nr % 515 == 0:
+                            waiting_time += 30
+                        if conf_nr % 630 == 0:
                             if do_harvest == ['333']:
-                                sh_file.write('wait; sleep 1d;\n')
-                                waiting_time += 86400
+                                sh_file.write('wait; sleep 22h;\n')
+                                waiting_time += 79200
                             # sh_file.write('wait; sudo systemctl restart zts;\n')
                         conf_nr += 1
                     print(vr_nr)
