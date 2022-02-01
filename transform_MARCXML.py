@@ -299,7 +299,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                         if new_issue:
                             issue_tag = \
                                 record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
-                                            '/{http://www.loc.gov/MARC21/slim}subfield[@code="d"]')
+                                            '/{http://www.loc.gov/MARC21/slim}subfield[@code="e"]')
                             issue_tag.text = str(new_issue)
                             issue = new_issue
                             differences_from_source = True
