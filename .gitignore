@@ -23,3 +23,7 @@ create_records_from_dict.py
 get_different_records.py
 get_excluded_records.py
 get_general_exclusion_regexes.py
+get_translators_used_internally.py
+test.py
+test.txt
+replacement_regexes.txt
