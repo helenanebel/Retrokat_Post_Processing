@@ -20,6 +20,7 @@ def merge_journal_records():
                 if record_nr % 500 == 0:
                     print(record_nr)
                 complete_root.append(record)
+    print(record_nr)
     complete_tree.write(zeder_id + '_proper.xml', encoding='utf-8', xml_declaration=True)
     if zeder_id + '_post_process.xml' in os.listdir():
         os.remove(zeder_id + '_post_process.xml')
