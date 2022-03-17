@@ -6,6 +6,157 @@ from create_jstor_url_dict import create_jstor_url_dict
 from create_publisher_url_dict import get_url_dict
 
 
+# Funktion, um die Inhalte zweier Issue-Dictionaries zu matchen.
+def match_issue_dicts(jstor_mapping_dict, publisher_issue_dict, jstor_issue_dict, total_nr, total_matches):
+    print(total_matches)
+    for pagination in publisher_issue_dict:
+        if pagination in jstor_issue_dict:
+            # prüfen, ob nur ein Artikel mit dieser Seitennummerierung erschienen ist
+            if len(jstor_issue_dict[pagination]) == 1:
+                for author in jstor_issue_dict[pagination]:
+                    total_nr += len(jstor_issue_dict[pagination][author])
+                    publisher_author = \
+                        list(publisher_issue_dict[pagination].keys())[0]
+                    if len(jstor_issue_dict[pagination][author]) == 1:
+                        jstor_mapping_dict[publisher_issue_dict[pagination][publisher_author][0]] = \
+                        jstor_issue_dict[pagination][author][0]
+                        total_matches += 1
+                    else:
+                        author_publication_list_jstor = sorted(jstor_issue_dict[pagination][author])
+                        author_publication_list_publisher = sorted(
+                            publisher_issue_dict[pagination][publisher_author])
+                        for p in range(len(author_publication_list_publisher)):
+                            if p < len(author_publication_list_jstor):
+                                jstor_mapping_dict[author_publication_list_publisher[p]] = \
+                                author_publication_list_jstor[p]
+                                total_matches += 1
+            # mehrere auf der selben Seite erschienene Artikel anhand der Autoren zuordnen
+            else:
+                for jstor_author in jstor_issue_dict[pagination]:
+                    total_nr += len(jstor_issue_dict[pagination][jstor_author])
+                    author_publication_list_jstor = sorted(
+                        list(set(jstor_issue_dict[pagination][jstor_author])))
+                    for publisher_author in publisher_issue_dict[pagination]:
+                        author_publication_list_publisher = sorted(
+                            list(set(publisher_issue_dict[pagination][publisher_author])))
+                        publisher_names_list = [name.lower() for name in re.findall(r'\w+', publisher_author)]
+                        names_list = [name.lower() for name in re.findall(r'\w+', jstor_author)]
+                        # prüfen, ob die Anzahl der Artikel mit der selben Seitenzahl übereinstimmt
+                        if len([name for name in names_list if name in publisher_names_list]) >= 2:
+                            if len(author_publication_list_jstor) != len(author_publication_list_publisher):
+                                print('_______________________________')
+                                print('different list length')
+                                print(author_publication_list_publisher, author_publication_list_jstor)
+                                print('_______________________________')
+                                # Probleme bei:
+                                # Review by: John Habgood
+                                # http://www.jstor.org/stable/23959547
+                                # Review by: John S. Habgood
+                                # https://www.jstor.org/stable/23959548
+                                # solche Autoren evtl. zusammenlegen.
+                            else:
+                                for p in range(len(author_publication_list_publisher)):
+                                    if p < len(author_publication_list_jstor):
+                                        jstor_mapping_dict[author_publication_list_publisher[p]] = \
+                                            author_publication_list_jstor[p]
+                                        total_matches += 1
+        else:
+            total_nr += 1
+            pagination_found = False
+            # unerwünschte Zeichen in der Seitennummerierung entfernen
+            for p in [p.replace('*', '') for p in jstor_issue_dict if
+                      re.findall(r'^' + p.replace('*', '').split('-')[0] + '-', pagination)]:
+                try:
+                    # Berechnung der Differenz der letzten angegebenen Seitenzahlen
+                    if '-' in p:
+                        difference = abs(int(p.split('-')[1]) - int(pagination.split('-')[1]))
+                    else:
+                        difference = abs(int(p) - int(pagination.split('-')[1]))
+                    if difference <= 5:
+                        if len(jstor_issue_dict[p]) == 1:
+                            for author in jstor_issue_dict[p]:
+                                total_nr += len(
+                                    jstor_issue_dict[p][author])
+                                publisher_author = \
+                                    list(
+                                        publisher_issue_dict[pagination].keys())[
+                                        0]
+                                if len(jstor_issue_dict[p][
+                                           author]) == 1:
+                                    jstor_mapping_dict[
+                                        publisher_issue_dict[pagination][
+                                            publisher_author][0]] = \
+                                        jstor_issue_dict[p][author][0]
+                                    total_matches += 1
+                                    pagination_found = True
+                                else:
+                                    author_publication_list_jstor = sorted(
+                                        jstor_issue_dict[p][author])
+                                    author_publication_list_publisher = sorted(
+                                        publisher_issue_dict[pagination][
+                                            publisher_author])
+                                    for ap in range(len(author_publication_list_publisher)):
+                                        if ap < len(author_publication_list_jstor):
+                                            jstor_mapping_dict[
+                                                author_publication_list_publisher[ap]] = \
+                                                author_publication_list_jstor[ap]
+                                            pagination_found = True
+                                            total_matches += 1
+                        else:
+                            for jstor_author in jstor_issue_dict[p]:
+                                total_nr += len(
+                                    jstor_issue_dict[p][jstor_author])
+                                author_publication_list_jstor = sorted(list(set(
+                                    jstor_issue_dict[p][jstor_author])))
+                                for publisher_author in publisher_issue_dict[
+                                    pagination]:
+                                    author_publication_list_publisher = sorted(
+                                        list(set(
+                                            publisher_issue_dict[pagination][
+                                                publisher_author])))
+                                    publisher_names_list = [name.lower() for name in
+                                                            re.findall(r'\w+',
+                                                                       publisher_author)]
+                                    names_list = [name.lower() for name in
+                                                  re.findall(r'\w+', jstor_author)]
+                                    if len([name for name in names_list if
+                                            name in publisher_names_list]) >= 2:
+                                        if len(author_publication_list_jstor) != len(
+                                                author_publication_list_publisher):
+                                            print('_______________________________')
+                                            print('different list length')
+                                            print(author_publication_list_publisher, author_publication_list_jstor)
+                                            print('_______________________________')
+                                            # Probleme bei:
+                                            # Review by: John Habgood
+                                            # http://www.jstor.org/stable/23959547
+                                            # Review by: John S. Habgood
+                                            # https://www.jstor.org/stable/23959548
+                                            # solche Autoren evtl. zusammenlegen.
+                                        for ap in range(len(author_publication_list_publisher)):
+                                            if ap < len(author_publication_list_jstor):
+                                                jstor_mapping_dict[
+                                                    author_publication_list_publisher[ap]] = \
+                                                    author_publication_list_jstor[ap]
+                                                total_matches += 1
+                                                pagination_found = True
+                except Exception as e:
+                    print('Error', e, p, pagination)
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+
+                    print(exc_type, fname, exc_tb.tb_lineno)
+            if not pagination_found:
+                print('_______________________________')
+                print('pagination not found')
+                print(pagination, publisher_issue_dict[pagination])
+                print(jstor_issue_dict)
+                print('_______________________________')
+                pass
+    print(total_matches)
+    return total_nr, total_matches
+
+
 def get_jstor_links(zeder_id: str):
     total_nr = 0
     total_matches = 0
@@ -18,162 +169,43 @@ def get_jstor_links(zeder_id: str):
                   encoding="utf-8") as jstor_file:
             publisher_dict = json.load(jstor_file)
         jstor_mapping_dict = {}
+        # über Jahreszahlen im Publisher-Dictionary iterieren
         for year in publisher_dict:
-            for volume in publisher_dict[year]:
-                for issue in publisher_dict[year][volume]:
-                    for pagination in publisher_dict[year][volume][issue]:
-                        if year in jstor_dict:
-                            """for v in jstor_dict[year]:
-                                for i in jstor_dict[year][v]:
-                                    for p in jstor_dict[year][v][i]:
-                                        pagination_dict[p] = jstor_dict[year][v][i][p]"""
-                            if volume in jstor_dict[year]:
-                                # volumes werden immer gefunden.
-                                if issue not in jstor_dict[year][volume]:
-                                    issues_found_jstor = sorted(list(jstor_dict[year][volume].keys()))
-                                    issues_found_publisher = sorted(list(publisher_dict[year][volume].keys()))
-                                    if len(issues_found_jstor) == len(issues_found_publisher):
-                                        for i in range(len(issues_found_publisher)):
-                                            jstor_dict[year][volume][issues_found_publisher[i]] = jstor_dict[year][volume][issues_found_jstor[i]]
-                                    else:
-                                        print('issues missing:', issues_found_jstor, issues_found_publisher)
-                                if issue in jstor_dict[year][volume]:
-                                    if pagination in jstor_dict[year][volume][issue]:
-                                        if len(jstor_dict[year][volume][issue][pagination]) == 1:
-                                            for author in jstor_dict[year][volume][issue][pagination]:
-                                                total_nr += len(jstor_dict[year][volume][issue][pagination][author])
-                                                publisher_author = \
-                                                list(publisher_dict[year][volume][issue][pagination].keys())[0]
-                                                if len(jstor_dict[year][volume][issue][pagination][author]) == 1:
-                                                    jstor_mapping_dict[publisher_dict[year][volume][issue][pagination][publisher_author][0]] = jstor_dict[year][volume][issue][pagination][author][0]
-                                                    total_matches += 1
-                                                else:
-                                                    author_publication_list_jstor = sorted(jstor_dict[year][volume][issue][pagination][author])
-                                                    author_publication_list_publisher = sorted(publisher_dict[year][volume][issue][pagination][publisher_author])
-                                                    for p in range(len(author_publication_list_publisher)):
-                                                        if p < len(author_publication_list_jstor):
-                                                            jstor_mapping_dict[author_publication_list_publisher[p]] = author_publication_list_jstor[p]
-                                                            total_matches += 1
-                                        else:
-                                            # hier mehrere Autoren auf selber Seite abprüfen!
-                                            for jstor_author in jstor_dict[year][volume][issue][pagination]:
-                                                total_nr += len(jstor_dict[year][volume][issue][pagination][jstor_author])
-                                                author_publication_list_jstor = sorted(list(set(jstor_dict[year][volume][issue][pagination][jstor_author])))
-                                                for publisher_author in publisher_dict[year][volume][issue][pagination]:
-                                                    author_publication_list_publisher = sorted(
-                                                        list(set(publisher_dict[year][volume][issue][pagination][publisher_author])))
-                                                    publisher_names_list = [name.lower() for name in re.findall(r'\w+', publisher_author)]
-                                                    names_list = [name.lower() for name in re.findall(r'\w+', jstor_author)]
-                                                    if len([name for name in names_list if name in publisher_names_list]) >= 2:
-                                                        if len(author_publication_list_jstor) != len(author_publication_list_publisher):
-                                                            pass
-                                                            # print('different list length')
-                                                            # print(author_publication_list_publisher, author_publication_list_jstor)
-                                                            # Probleme bei:
-                                                            # Review by: John Habgood
-                                                            # http://www.jstor.org/stable/23959547
-                                                            # Review by: John S. Habgood
-                                                            # https://www.jstor.org/stable/23959548
-                                                            # solche Autoren evtl. zusammenlegen.
-                                                        for p in range(len(author_publication_list_publisher)):
-                                                            if p < len(author_publication_list_jstor):
-                                                                jstor_mapping_dict[author_publication_list_publisher[p]] = \
-                                                                author_publication_list_jstor[p]
-                                                                total_matches += 1
-
-                                    else:
-
-                                        total_nr += 1
-                                        pagination_found = False
-                                        for p in [p.replace('*', '') for p in jstor_dict[year][volume][issue] if re.findall(r'^' + p.replace('*', '').split('-')[0] + '-', pagination)]:
-                                                try:
-                                                    if '-' in p:
-                                                        difference = abs(int(p.split('-')[1]) - int(pagination.split('-')[1]))
-                                                    else:
-                                                        difference = abs(int(p) - int(pagination.split('-')[1]))
-                                                    if difference <= 5:
-                                                        if len(jstor_dict[year][volume][issue][p]) == 1:
-                                                            for author in jstor_dict[year][volume][issue][p]:
-                                                                total_nr += len(
-                                                                    jstor_dict[year][volume][issue][p][author])
-                                                                publisher_author = \
-                                                                    list(
-                                                                        publisher_dict[year][volume][issue][pagination].keys())[
-                                                                        0]
-                                                                if len(jstor_dict[year][volume][issue][p][
-                                                                           author]) == 1:
-                                                                    jstor_mapping_dict[
-                                                                        publisher_dict[year][volume][issue][pagination][
-                                                                            publisher_author][0]] = \
-                                                                    jstor_dict[year][volume][issue][p][author][0]
-                                                                    total_matches += 1
-                                                                    pagination_found = True
-                                                                else:
-                                                                    author_publication_list_jstor = sorted(
-                                                                        jstor_dict[year][volume][issue][p][author])
-                                                                    author_publication_list_publisher = sorted(
-                                                                        publisher_dict[year][volume][issue][pagination][
-                                                                            publisher_author])
-                                                                    for ap in range(len(author_publication_list_publisher)):
-                                                                        if ap < len(author_publication_list_jstor):
-                                                                            jstor_mapping_dict[
-                                                                                author_publication_list_publisher[ap]] = \
-                                                                            author_publication_list_jstor[ap]
-                                                                            pagination_found = True
-                                                                            total_matches += 1
-                                                        else:
-                                                            for jstor_author in jstor_dict[year][volume][issue][p]:
-                                                                total_nr += len(
-                                                                    jstor_dict[year][volume][issue][p][jstor_author])
-                                                                author_publication_list_jstor = sorted(list(set(
-                                                                    jstor_dict[year][volume][issue][p][jstor_author])))
-                                                                for publisher_author in publisher_dict[year][volume][issue][
-                                                                    pagination]:
-                                                                    author_publication_list_publisher = sorted(
-                                                                        list(set(
-                                                                            publisher_dict[year][volume][issue][pagination][
-                                                                                publisher_author])))
-                                                                    publisher_names_list = [name.lower() for name in
-                                                                                            re.findall(r'\w+',
-                                                                                                       publisher_author)]
-                                                                    names_list = [name.lower() for name in
-                                                                                  re.findall(r'\w+', jstor_author)]
-                                                                    if len([name for name in names_list if
-                                                                            name in publisher_names_list]) >= 2:
-                                                                        if len(author_publication_list_jstor) != len(
-                                                                                author_publication_list_publisher):
-                                                                            pass
-                                                                            # print('different list length')
-                                                                            # print(author_publication_list_publisher,
-                                                                                  # author_publication_list_jstor)
-                                                                            # Probleme bei:
-                                                                            # Review by: John Habgood
-                                                                            # http://www.jstor.org/stable/23959547
-                                                                            # Review by: John S. Habgood
-                                                                            # https://www.jstor.org/stable/23959548
-                                                                            # solche Autoren evtl. zusammenlegen.
-                                                                        for ap in range(len(author_publication_list_publisher)):
-                                                                            if ap < len(author_publication_list_jstor):
-                                                                                jstor_mapping_dict[
-                                                                                    author_publication_list_publisher[ap]] = \
-                                                                                    author_publication_list_jstor[ap]
-                                                                                total_matches += 1
-                                                                                pagination_found = True
-                                                except Exception as e:
-                                                    print('Error', e, p, pagination)
-                                                    exc_type, exc_obj, exc_tb = sys.exc_info()
-                                                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-
-                                                    print(exc_type, fname, exc_tb.tb_lineno)
-                                        if not pagination_found:
-                                            pass
-                                            # print('pagination not found')
-                                            # print(pagination, year, volume, issue)
-                                            # print([pag for pag in jstor_dict[year][volume][issue]])
+            if not year in jstor_dict:
+                print('year', year, 'not found in jstor-dict')
+            else:
+                # über Jahrgänge in den Jahren iterieren
+                for volume in publisher_dict[year]:
+                    if volume not in jstor_dict[year]:
+                        print('________________')
+                        print('volume', volume, 'not found in', year)
+                        print(jstor_dict[year])
+                        print('________________')
+                    else:
+                        # über Issues in den Jahrgängen iterieren
+                        for issue in publisher_dict[year][volume]:
+                            # print('publisher_issue:', issue)
+                            if issue not in jstor_dict[year][volume]:
+                                issues_found_jstor = sorted(list(jstor_dict[year][volume].keys()))
+                                issues_found_publisher = sorted(list(publisher_dict[year][volume].keys()))
+                                if len(issues_found_jstor) == len(issues_found_publisher):
+                                    for i in range(len(issues_found_publisher)):
+                                        jstor_dict[year][volume][issues_found_publisher[i]] = jstor_dict[year][volume][issues_found_jstor[i]]
                                 else:
-                                    pass
-                                    # print('issue not found', year, volume, issue)
-        print(total_nr, 'not matched:', total_nr - total_matches)
+                                    if issues_found_publisher == ['null']:
+                                        # falls es keine Issue-Nummer gibt, dann werden alle Issues im JSTOR-Dicitonary ebenfalls unter der Issue-Bezeichnung "null" gespeichert.
+                                        new_jstor_dict = {'null': {}}
+                                        for issue in jstor_dict[year][volume]:
+                                            for jstor_pagination in jstor_dict[year][volume][issue]:
+                                                new_jstor_dict['null'][jstor_pagination] = jstor_dict[year][volume][issue][jstor_pagination]
+                                        jstor_dict[year][volume] = new_jstor_dict
+                                        issue = 'null'
+                            if issue in jstor_dict[year][volume]:
+                                # hier noch das Vorgehen für die Issues ohne Volume-Angabe implementieren
+                                # Auch die Funktion oben noch weiter anpassen
+                                total_nr, total_matches = match_issue_dicts(jstor_mapping_dict, publisher_dict[year][volume][issue], jstor_dict[year][volume][issue], total_nr,
+                                                  total_matches)
+        print('total:', total_nr, 'not matched:', total_nr - total_matches)
         with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping/' + zeder_id + '.json', 'w',
                       encoding="utf-8") as jstor_mapping_file:
                 json.dump(jstor_mapping_dict, jstor_mapping_file)
