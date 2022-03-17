@@ -22,11 +22,13 @@ if __name__ == '__main__':
                     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
                         json.dump(conf_dict, conf_file)
                 if 'conf_langs' not in conf_dict[zeder_id]:
-                    conf_dict[zeder_id]['conf_langs'] = input('Bitte geben Sie die zulässigen Sprachen ein: ')
+                    langs = input('Bitte geben Sie die zulässigen Sprachen ein: ')
+                    lang_dict = json.loads(langs)
+                    conf_dict[zeder_id]['conf_langs'] = lang_dict
                     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
                         json.dump(conf_dict, conf_file)
-    if zeder_id + '.json' not in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping'):
-        get_jstor_links(zeder_id)
+    # if zeder_id + '.json' not in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping'):
+    get_jstor_links(zeder_id)
     record_nr = check_and_split_in_issues(zeder_id, conf_available)
     if not conf_available:
         exclude = input('Bitte geben Sie die Liste auszuschließender Titel ein: ')
@@ -36,7 +38,8 @@ if __name__ == '__main__':
         period = (start_year, end_year)
         eppn = input('Bitte geben Sie die ePPN ein: ')
         default_lang = input('Bitte geben Sie die Default-Sprache ein: ')
-        conf_langs = input('Bitte geben Sie die zulässigen Sprachen ein: ')
+        langs = input('Bitte geben Sie die zulässigen Sprachen ein: ')
+        conf_langs = json.loads(langs)
         conf_dict[zeder_id] = {'exclude': exclude, 'period': period, 'eppn': eppn, 'lang': default_lang, 'conf_langs': conf_langs}
         if input('Wollen Sie diese Konfigurationsangaben speichern (j/n)') == 'j':
             with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
