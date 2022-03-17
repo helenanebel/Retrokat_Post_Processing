@@ -23,6 +23,10 @@ def create_jstor_url_dict(zeder_id: str):
                 year = row[3]
                 issue = row[10]
                 volume = row[11]
+                if volume:
+                    volume = volume.split()[0]
+                else:
+                    volume = 'null'
                 firstpage = row[16]
                 lastpage = row[17]
                 author = row[13]
