@@ -27,3 +27,4 @@ get_translators_used_internally.py
 test.py
 test.txt
 replacement_regexes.txt
+unused_scripts
