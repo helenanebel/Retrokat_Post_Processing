@@ -17,12 +17,8 @@ final_additional_information
 !present_records.json
 get_records.py
 zotero_harvester_header.conf
-add_001_to_excluded_records.py
-create_missing_record_file.py
+unused_scripts/*
 create_records_from_dict.py
-get_different_records.py
-get_excluded_records.py
-get_general_exclusion_regexes.py
 get_translators_used_internally.py
 test.py
 test.txt
