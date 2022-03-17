@@ -12,7 +12,8 @@ from language_detection import detect_title
 
 month_dict = {'January': '1', 'February': '2', 'March': '3', 'April': '4', 'May': '5',
               'June': '6', 'July': '7', 'August': '8', 'September': '9', 'October': '10',
-              'November': '11', 'December': '12'	}
+              'November': '11', 'December': '12',
+              '3e livraison': '3', '4e livraison': '4', '2e livraison': '2', '1re livraison': '1',}
 
 
 def create_marc_field(record, field_dict: dict):
@@ -81,16 +82,20 @@ def create_review_link(record):
             pub_author = re.findall(r'#name::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#name::([^#]+)#', tag.text, re.IGNORECASE) else ''
             pub_year = re.findall(r'#year::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#year::([^#]+)#', tag.text, re.IGNORECASE) else ''
             pub_place = re.findall(r'#place::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#place::([^#]+)#', tag.text, re.IGNORECASE) else ''
+            pub_isbn = re.findall(r'#isbn::([^#]+)#', tag.text, re.IGNORECASE)[0] if re.findall(r'#isbn::([^#]+)#', tag.text, re.IGNORECASE) else ''
             review_year = int(get_subfield(record, '264', 'c'))
-            records_found = search_publication(pub_title, pub_author, pub_year, pub_place, review_year)
+            if not pub_isbn:
+                records_found = search_publication(pub_title, pub_author, pub_year, pub_place, review_year)
+                if tag_nr == 0:
+                    review_title = '[Rezension von: ' + pub_author.split('::')[0] + ', ' + pub_title
+                if tag_nr == 1:
+                    review_title += '...'
+            else:
+                records_found = search_publication_with_isbn(pub_isbn)
             for keyword in keywords:
                 if keyword.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text == tag.text:
                     if keyword in record:
                         record.remove(keyword)
-            if tag_nr == 0:
-                review_title = '[Rezension von: ' + pub_author.split('::')[0] + ', ' + pub_title
-            if tag_nr == 1:
-                review_title += '...'
         tag_nr += 1
     if review_title:
         review_title += ']'
@@ -123,9 +128,11 @@ def check_and_split_in_issues(zeder_id, conf_available):
                 if get_subfield(record, '936', 'e'):
                     new_issue = str(get_subfield(record, '936', 'd').zfill(3)).replace('/', '-') + \
                                 str(get_subfield(record, '936', 'e').zfill(2)).replace('/', '-')
-                else:
+                elif get_subfield(record, '936', 'd'):
                     # print('missing issue-nr: ', get_subfield(record, '856', 'u'))
                     new_issue = str(get_subfield(record, '936', 'd').zfill(3)).replace('/', '-') + '000'
+                else:
+                    continue
                 if new_issue not in all_issues:
                     with open('volume_files/' + current_issue + '.xml', 'w') as xml_file:
                         xml_file.close()
@@ -133,10 +140,6 @@ def check_and_split_in_issues(zeder_id, conf_available):
                     all_issues.append(new_issue)
                     issue_tree = ElementTree.parse('marcxml_empty.xml')
                     issue_root = issue_tree.getroot()
-                    if not (len([pagination for pagination in paginations if ('-' in pagination or '–' in pagination)])
-                            > (len(paginations ) /4)):
-                        print(paginations)
-                        print(current_issue, 'has problem with pagination')
                     paginations = []
                     reviews = 0
                     current_issue = new_issue
@@ -175,6 +178,7 @@ def check_and_split_in_issues(zeder_id, conf_available):
 
 def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int, int], record_nr, default_lang: str, conf_langs: list[str]):
     responsibles_corrected = {}
+    personal_titles = {}
     total_jstor_fails = 0
     total_jstor_links = 0
     review_links_created = 0
@@ -197,6 +201,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     review_links = []
     jstor_dict = {}
     all_sources = {}
+    all_languages = []
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zeder_id + '.json', 'r') as missing_link_file:
         records_with_missing_links = json.load(missing_link_file)
         missing_link_lookup_years = [missing_link_record['year'] for missing_link_record in records_with_missing_links]
@@ -247,8 +252,23 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     continue
             urls.append(url)
             dois.append(doi)
+            title = get_subfield(record, '245', 'a')
+            for exclude_regex in exclude:
+                if re.search(exclude_regex, title, re.IGNORECASE):
+                    if title not in excluded_titles:
+                        excluded_titles.append(title)
+                    discard = True
+            if discard:
+                discarded_nr += 1
+                continue
             differences_from_source = False
             if volume:
+                if '-' in volume:
+                    volume = re.sub(r'(\d+).+?(\d+)', r'\1/\2', volume)
+                    volume_tag = \
+                        record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
+                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="d"]')
+                    volume_tag.text = volume
                 if re.search(r'[^\d/]', volume):
                     new_volume = re.findall(r'[^\d](\d{1,3}(?:-\d+)?)(?:[^\d]|$)', volume)
                     if new_volume:
@@ -258,10 +278,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                         '/{http://www.loc.gov/MARC21/slim}subfield[@code="d"]')
                         volume_tag.text = volume
                         differences_from_source = True
-                        if '-' in volume:
-                            volume = re.sub(r'(\d+).+?(\d+)', r'\1/\2', volume)
-                            volume_tag.text = volume
-                            differences_from_source = True
                     else:
                         if re.findall(r'^(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)$', volume):
                             new_volume = from_roman \
@@ -293,9 +309,9 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                         if re.findall(r'^(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)$', issue):
                             new_issue = from_roman(
                                 re.findall(r'^(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)$', issue)[0])
-                        elif re.findall(r'(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)$', issue):
+                        elif re.findall(r'^(?=[mdclxvi])m*(?:c[md]|d?c*)(?:x[cl]|l?x*)(?:i[xv]|v?i*)$', issue):
                             new_issue = from_roman(
-                                re.findall(r'(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)$', issue)[0])
+                                re.findall(r'^(?=[mdclxvi])m*(?:c[md]|d?c*)(?:x[cl]|l?x*)(?:i[xv]|v?i*)$', issue)[0])
                         if new_issue:
                             issue_tag = \
                                 record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
@@ -338,6 +354,17 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                         pagination_tag.text = pagination
                         differences_from_source = True
                         print(pagination)
+                    elif re.findall(r'(?=[mdclxvi])m*(?:c[md]|d?c*)(?:x[cl]|l?x*)(?:i[xv]|v?i*)', pagination):
+                        new_pagination = []
+                        for pag in re.findall(r'(?=[mdclxvi])m*(?:c[md]|d?c*)(?:x[cl]|l?x*)(?:i[xv]|v?i*)', pagination):
+                            new_pagination.append(str(from_roman(pag)))
+                        pagination = '-'.join(new_pagination)
+                        pagination_tag = \
+                            record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
+                                        '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
+                        pagination_tag.text = pagination
+                        differences_from_source = True
+                        print(pagination)
                     else:
                         arabic_page_numbers = []
                         paginations = pagination.split('-')
@@ -347,14 +374,13 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                 arabic_page_numbers.append(arabic_page_number)
                             except:
                                 append_to_postprocess = True
-                        if len(arabic_page_numbers) == 2:
-                            print(pagination)
-
+                        if len(arabic_page_numbers) > 0:
                             pagination_tag = \
                                 record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
                                             '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
                             pagination_tag.text = str(arabic_page_numbers[0]) + '-' + str(arabic_page_numbers[1])
-                            print(pagination_tag.text)
+                            create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
+                                                       'subfields': {'a': ['heb']}})
                             differences_from_source = True
                 elif not re.findall(r'\d+', pagination):
                     append_to_postprocess = True
@@ -367,11 +393,10 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                        {'code': 'y'})
                 original_source_tag.text = get_subfield(record, '773', 'g')
             source = get_subfield(record, '773', 'g')
-            title = get_subfield(record, '245', 'a')
             author = get_subfield(record, '100', 'a')
             source_ppn = get_subfield(record, '773', 'w').replace('(DE-627)', '')
             # Dubletten im Ergebnis herausfiltern:
-            if source in all_sources and zeder_id == '1157b':
+            if source in all_sources and zeder_id in ['1157b', '1259++']:
                 previous_title = all_sources[source]['title']
                 previous_author = all_sources[source]['author']
                 if (previous_title == title) and (previous_author == author):
@@ -407,12 +432,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                            'subfields': {'a': [retrieve_sign], '2': ['LOK']}})
             create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                        'subfields': {'a': ['mteo']}})
-            if "$$\stackrel{'}{\\alpha }$$" in title:
-                title = title.replace("$$\stackrel{'}{\\alpha }$$", "α̉")
-                print(title)
-            # ὣ = $$\stackrel{ῶ}{\omega }$$
-            # ἶ
-
             if '$$' in title:
                 # print(title)
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
@@ -420,7 +439,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             language_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]')
             if not language_tag:
                 detected_lang = detect_title(title)
-                if detected_lang in conf_langs:
+                if detected_lang in conf_langs and "[Rezension von: " not in title:
                     print('language', detected_lang, 'will be set for title', title)
                     create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
                                                'subfields': {'a': [detected_lang]}})
@@ -432,6 +451,23 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     else:
                         create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                                'subfields': {'a': ['nbrk'], '2': ['LOK']}})
+            else:
+                if language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text not in all_languages:
+                    all_languages.append(language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
+                if language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text not in conf_langs:
+                    detected_lang = detect_title(title)
+                    if detected_lang in conf_langs and "[Rezension von: " not in title:
+                        language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = detected_lang
+                    else:
+                        print("no language:", title)
+                        if default_lang != "":
+                            language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = default_lang
+                        else:
+                            record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]'))
+                            create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
+                                                       'subfields': {'a': ['nbrk'], '2': ['LOK']}})
+                elif "[Rezension von: " in title:
+                    language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = default_lang
             if zeder_id in present_record_list:
                 delete_entries = []
                 if [year in present_record_lookup_years]:
@@ -470,23 +506,30 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                         discard = True
                     for entry in delete_entries:
                         present_record_list[zeder_id].remove(entry)
-            for exclude_regex in exclude:
-                if re.search(exclude_regex, get_subfield(record, '245', 'a'), re.IGNORECASE):
-                    if title not in excluded_titles:
-                        excluded_titles.append(title)
-                    discard = True
-            if discard:
-                discarded_nr += 1
-                continue
             if any([re.search(regex, title, re.IGNORECASE) for regex in [r'^errat*', r'^corrigend*', r'^correct*', r'^berichtigung*', r'^omission*',
                                                                          r'\berrat((um)|(a))\b', r'\bcorrigend((um)|(a))\b', r'\bcorrections?\b', r'\bberichtigung\b']]):
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                            'subfields': {'a': ['erco'], '2': ['LOK']}})
                 # Abrufzeichen für die Nachbearbeitung von Errata/Corrigenda!
             responsibles = get_fields(record, '100') + get_fields(record, '700')
-            # print(len(responsibles), url)
             for responsible in responsibles:
                 responsible_name = responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text
+                if responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="c"]') is not None:
+                    personal_title = responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="c"]').text
+                    personal_titles[personal_title] = 0
+                    if re.match(r', [^\s+]+?', responsible_name):
+                        responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = responsible_name.replace(', ', '') + ', ' + personal_title
+                        responsible_name = responsible_name.replace(', ', '') + ', ' + personal_title
+                        responsible.remove(responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="c"]'))
+                        personal_titles[personal_title] += 1
+                if responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="b"]') is not None:
+                    personal_title = responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="b"]').text
+                    personal_titles[personal_title] = 0
+                    if re.match(r', [^\s+]+?', responsible_name):
+                        responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = responsible_name.replace(', ', '') + ', ' + personal_title
+                        responsible_name = responsible_name.replace(', ', '') + ', ' + personal_title
+                        responsible.remove(responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="b"]'))
+                        personal_titles[personal_title] += 1
                 if len(responsibles) == 1:
                     if re.match(r', [^\s+]+?', responsible_name):
                         responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = responsible_name.replace(', ', '')
@@ -501,6 +544,9 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                         responsible.remove(gnd_link)
                     responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = re.sub(r'^(\w\.), ((?:\w\.\s?)+)$', r'\2 \1', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
                     responsible.attrib['ind1'] = '0'
+                if re.search(r'\s+\.\s+', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
+                    responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = re.sub(r'\s+\.\s+', ' ',
+                                                                                                          responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
             if url in review_links:
                 create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
                                                'subfields': {'a': ['Rezension'],
@@ -518,15 +564,17 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     is_review = True
                     print('created tag Rezension for url', url)
                 elif re.search(review_regex, title):
-                    print(re.search(review_regex, title))
-                    print(title)
-                    print('tagged nbrk Rezension', url)
-                    '''create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
-                                               'subfields': {'a': ['nbrk'], '2': ['LOK']}})'''
-                    create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
-                                               'subfields': {'a': ['Rezension'],
-                                                             '0': ['(DE-588)4049712-4', '(DE-627)106186019'],
-                                                             '2': ['gnd-content']}})
+                    result = re.search(review_regex, title).group(0)
+                    if not (re.search(r'S\.\s*I\.', title) and re.search(r'\s+S\.\s*I', result)):
+                        print(re.search(review_regex, title))
+                        print(title)
+                        print('tagged nbrk Rezension', url)
+                        create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
+                                                   'subfields': {'a': ['nbrk'], '2': ['LOK']}})
+                        create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
+                                                   'subfields': {'a': ['Rezension'],
+                                                                 '0': ['(DE-588)4049712-4', '(DE-627)106186019'],
+                                                                 '2': ['gnd-content']}})
             elif form_tag.text == "Rezension":
                 is_review = True
             records_found, review_title = create_review_link(record)
@@ -614,8 +662,10 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
         deduplicate_tree.write(zeder_id + '_deduplicated.xml', encoding='utf-8', xml_declaration=True)
     with open('statistics_' + zeder_id + '.txt', 'w', encoding='utf-8') as statistics_file:
         if zeder_id in present_record_list:
-            print('missing doublets:', present_record_list[zeder_id])
-            if len(present_record_list[zeder_id]) > 0:
+            if len(present_record_list[zeder_id]) > 10:
+                print(str(present_record_list[zeder_id]))
+                input('Zur Kenntnisnahme: Die oben genannten Dubletten wurden nicht erkannt')
+            elif len(present_record_list[zeder_id]) > 0:
                 input('Die folgenden Dubletten wurden nicht erkannt: ' + str(present_record_list[zeder_id]))
             statistics_file.write('missing doublets:' + str(present_record_list[zeder_id]) + '\n')
         missing_volumes = [volume for volume in volume_list if volume not in found_volume_list]
@@ -643,8 +693,10 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
         statistics_file.write('review links created:' + str(review_links_created) + '\n')
         statistics_file.write('found missing links to add:' + str(links_to_add_nr) + '\n')
         statistics_file.write('excluded titles:' + str(excluded_titles) + '\n')
-        statistics_file.write('responsibles corrected' + str(responsibles_corrected) + '\n')
-        statistics_file.write('review links' + str(review_links) + '\n')
+        statistics_file.write('responsibles corrected:' + str(responsibles_corrected) + '\n')
+        statistics_file.write('personal titles corrected:' + str(personal_titles) + '\n')
+        statistics_file.write('review links:' + str(review_links) + '\n')
+        statistics_file.write('languages:' + str(review_links) + '\n')
         print('total number of records harvested:', record_nr)
         print('proper:', proper_nr)
         print('post_process:', post_process_nr)
@@ -657,8 +709,10 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
         print('review links created:', review_links_created)
         print('found missing links to add:', links_to_add_nr)
         print('excluded titles:', excluded_titles)
-        print('responsibles corrected', responsibles_corrected)
-        print('review links', review_links)
+        print('responsibles corrected:', responsibles_corrected)
+        print('personal titles corrected:', personal_titles)
+        print('review links;', review_links)
+        print('languages:', all_languages)
 
 
 # announcement, books and media received
