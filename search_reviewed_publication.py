@@ -106,8 +106,15 @@ def search_publication(title, author, year, place, review_year):
 
 
 def search_publication_with_isbn(isbn: str):
+    isbn = isbn.replace('‑', '')
+    if not isbn:
+        print('no isbn found')
+        return {}
+    if len(isbn) < 9:
+        print('isbn too short')
+        return {}
     url = 'http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.isb%3D' + isbn + '&maximumRecords=10&recordSchema=picaxml'
-    # print(url)
+    print(url)
     xml_data = urllib.request.urlopen(url)
     xml_soup = BeautifulSoup(xml_data, features='lxml')
     records_found = check_response_for_priority_of_results(xml_soup, 2021)
