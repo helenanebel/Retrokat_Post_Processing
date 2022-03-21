@@ -32,10 +32,6 @@ def get_records_with_missing_links(eppn, zid):
                 if record.find('datafield', tag='028A'):
                     if record.find('datafield', tag='028A').find('subfield', code='A') and record.find('datafield', tag='028A').find('subfield', code='D'):
                         author = record.find('datafield', tag='028A').find('subfield', code='A').text + ', ' + record.find('datafield', tag='028A').find('subfield', code='D').text
-                    else:
-                        author = None
-                else:
-                    author = None
                 source_information = record.find('datafield', tag='031A')
                 try:
                     if source_information.find('subfield', code='j'):
@@ -55,10 +51,11 @@ def get_records_with_missing_links(eppn, zid):
                     else:
                         pages = None
                     record_id = record.find('datafield', tag='003@').find('subfield', code='0').text
-                    records_with_missing_links.append(
-                        {'title': title, 'author': author, 'year': year, 'volume': volume, 'issue': issue,
-                         'pages': pages, 'doi': doi, 'id': record_id})
+                    records_with_missing_links.append({'title': title, 'year': year,
+                                                             'volume': volume, 'issue': issue, 'pages': pages,
+                                                             'doi': doi, 'id': record_id})
                 except Exception as e:
+                    print(e)
                     print(record)
 
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zid + '.json', 'w') as json_file:
