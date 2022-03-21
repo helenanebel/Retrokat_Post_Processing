@@ -407,14 +407,16 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             if [year in missing_link_lookup_years]:
                 for entry in [entry for entry in records_with_missing_links if entry['year'] == year]:
                     if ('volume' in entry) and ('issue' in entry) and ('pages' in entry):
-                        # print(volume, issue, pagination)
                         if (entry['volume'] == volume) and (entry['issue'] == issue) and (
                                 entry['pages'] == pagination):
                             if not entry['doi']:
-                                links_to_add[entry['id']] = {'url': url, 'doi': doi}
+                                links_to_add[entry['id']] = {'to_remove': [], 'to_add': ['2051 ' + doi, '4950 ' + url + '$xR$3Volltext$4ZZ$534']}
+                                links_to_add_nr += 1
+                            elif 'doi.org' in url:
+                                links_to_add[entry['id']] = {'to_remove': [], 'to_add': ['4950 ' + url + '$xR$3Volltext$4ZZ$534']}
                                 links_to_add_nr += 1
                             else:
-                                links_to_add[entry['id']] = {'url': url, 'doi': None}
+                                links_to_add[entry['id']] = {'to_remove': [], 'to_add': ['4950 ' + url + '$xH$3Volltext$4ZZ$534']}
                                 links_to_add_nr += 1
             if year not in volume_list:
                 discarded_by_volume_nr += 1
@@ -647,11 +649,9 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
         with open(zeder_id + '_rezensierte_werke_nicht_ixtheo.json', 'w', newline='') as non_ixtheo_ppn_file:
             json.dump(non_ixtheo_ppns, non_ixtheo_ppn_file)
     if links_to_add_nr > 0:
-        with open(zeder_id + '_links_to_add.csv', 'w', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile, delimiter=',',
-                                    quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            for ppn in links_to_add:
-                csv_writer.writerow([ppn, links_to_add[ppn]['url'], links_to_add[ppn]['doi']])
+        with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zeder_id + '_links_to_add.json', 'w', newline='') as links_to_add_file:
+            json.dump(links_to_add, links_to_add_file)
+    os.remove('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zeder_id + '.json')
     if ppns_linked:
         with open(zeder_id + '_ppns_linked.json', 'w') as ppns_linked_file:
             json.dump(ppns_linked, ppns_linked_file)
