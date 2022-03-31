@@ -3,6 +3,7 @@ import os
 import re
 from get_urls_download_failed import get_urls
 from datetime import datetime
+from shutil import copy2
 
 with open('zotero_harvester_header.conf', 'r') as zotero_harvester_header_file:
     zotero_harvester_header = zotero_harvester_header_file.read()
@@ -68,6 +69,8 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                         article_nr_in_file = 0
                         with open(zid + '_failing_urls.json') as article_link_file:
                             article_links = json.load(article_link_file)
+                        raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{1}.xml .\n'
+                        raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" &> "{1}.out";\n'
                         for article_link in article_links:
                             vr_nr += 1
                             # zotero_crawl_url_regex auskommentieren!
@@ -85,10 +88,8 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                             muse_conf = muse_conf.replace(title, journal_title + '_' + str(vr_nr))
                             title = journal_title + '_' + str(vr_nr)
                             vr_file.write(muse_conf + '\n')
-                            raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{1}.xml .\n'
                             download_command = raw_download_command.format(zid, zid + '_' + str(vr_nr))
                             download_command_file.write(download_command)
-                            raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" &> "{1}.out";\n'
                             harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(vr_nr), title)
                             sh_file.write('wait;' + harvesting_command)
                             sh_file.write('wait; sleep 10s;\n')
@@ -109,11 +110,14 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                     conf_nr = 0
                     vr_file = open('C:/Users/hnebel/Documents/conf-files/' + zid + '.conf', 'w',
                                      newline='\n')
+                    sh_file.write('wait;' + 'mkdir ' + zid + '_out;\n')
                     upload_files.append(zid + '.conf')
                     vr_file.write(zotero_harvester_header)
                     article_nr_in_file = 0
                     with open('article_links/' + zid + '.json') as article_link_file:
                         article_links = json.load(article_link_file)
+                    raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{1}.xml .\n'
+                    raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" &> "{0}_out/{1}.out";\n'
                     for article_link in article_links:
                         vr_nr += 1
                         # zotero_crawl_url_regex auskommentieren!
@@ -127,19 +131,18 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                         muse_conf = muse_conf.replace(title, journal_title + '_' + str(vr_nr))
                         title = journal_title + '_' + str(vr_nr)
                         vr_file.write(muse_conf + '\n')
-                        raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{1}.xml .\n'
                         download_command = raw_download_command.format(zid, zid + '_' + str(vr_nr))
                         download_command_file.write(download_command)
-                        raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" &> "{1}.out";\n'
                         harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(vr_nr), title)
                         sh_file.write('wait;' + harvesting_command)
                         if do_harvest == ['333']:
                             sh_file.write('wait; sleep 30s;\n')
                             waiting_time += 30
-                        if conf_nr % 630 == 0:
+                        if (conf_nr % 701) == 0 and (conf_nr != 0):
                             if do_harvest == ['333']:
-                                sh_file.write('wait; sleep 22h;\n')
-                                waiting_time += 79200
+                                sh_file.write('wait; sleep 20h;\n')
+                                # bei Dialnet ca. 20 min warten nach 15 Artikeln, bei MUSE nach ca. 600 Artikeln 20 h warten.
+                                waiting_time += 72000
                             # sh_file.write('wait; sudo systemctl restart zts;\n')
                         conf_nr += 1
                     print(vr_nr)
@@ -152,6 +155,7 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                 sh_file.write('wait; sleep 15m;\n')
 print(total_journal_number)
 download_command_file.close()
+copy2('C:/Users/hnebel/Documents/zotero_harvester.conf', 'W:/FID-Projekte/Team Retro-Scan/Zotero/zotero_harvester_backup/Zotero_harvester' + timestamp + '.conf')
 print("Dateien auf den Server hochladen & Skript auf BENU starten:")
 print("cd /Users/hnebel/Documents")
 upload_string = ""
