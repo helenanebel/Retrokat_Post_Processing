@@ -33,9 +33,15 @@ if __name__ == '__main__':
     if not conf_available:
         exclude = input('Bitte geben Sie die Liste auszuschließender Titel ein: ')
         exclude = json.loads(exclude.replace("'", '"'))
-        start_year = int(input('Bitte geben Sie das erste Jahr der Retrokatalogisierung ein: '))
-        end_year = int(input('Bitte geben Sie das letzte Jahr der Retrokatalogisierung ein: '))
-        period = (start_year, end_year)
+        period = []
+        period_completed = False
+        while not period_completed:
+            start_year = int(input('Bitte geben Sie das erste Jahr der Retrokatalogisierung ein: '))
+            end_year = int(input('Bitte geben Sie das letzte Jahr der Retrokatalogisierung ein: '))
+            period.append(start_year)
+            period.append(end_year)
+            if input('Wollen Sie weitere Zeiträume hinzufügen? ') == 'n':
+                period_completed = True
         eppn = input('Bitte geben Sie die ePPN ein: ')
         default_lang = input('Bitte geben Sie die Default-Sprache ein: ')
         langs = input('Bitte geben Sie die zulässigen Sprachen ein: ')
