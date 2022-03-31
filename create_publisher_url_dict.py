@@ -41,6 +41,8 @@ def get_url_dict(zeder_id: str):
         year = get_subfield(record, '264', 'c')
         volume = get_subfield(record, '936', 'd')
         if volume:
+            if re.findall(r'(\d+).+?(\d+)', volume):
+                volume = re.sub(r'(\d+).+?(\d+)', r'\1/\2', volume)
             if re.search(r'[^\d/]', volume):
                 new_volume = re.findall(r'[^\d](\d{1,3})[^\d]', volume)
                 if new_volume:
