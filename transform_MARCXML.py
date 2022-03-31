@@ -22,6 +22,7 @@ def create_marc_field(record, field_dict: dict):
                                             'ind2': field_dict['ind2']})
     for subfield_code in field_dict['subfields']:
         for subfield_text in field_dict['subfields'][subfield_code]:
+            new_datafield.tail = "\n"
             new_subfield = ElementTree.SubElement(new_datafield, "{http://www.loc.gov/MARC21/slim}subfield",
                                                   {'code': subfield_code})
             new_subfield.text = subfield_text
@@ -176,7 +177,7 @@ def check_and_split_in_issues(zeder_id, conf_available):
     return record_nr
 
 
-def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int, int], record_nr, default_lang: str, conf_langs: list[str]):
+def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int], record_nr, default_lang: str, conf_langs: list[str]):
     responsibles_corrected = {}
     personal_titles = {}
     total_jstor_fails = 0
@@ -188,10 +189,11 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
     discarded_by_volume_nr = 0
     proper_nr = 0
     deduplicate_nr = 0
-    volume_list = [str(year) for year in range(volumes_to_catalogue[0], volumes_to_catalogue[1] + 1)]
+    volume_list = []
+    for i in range(0, len(volumes_to_catalogue), 2):
+        volume_list += [str(year) for year in range(volumes_to_catalogue[i], volumes_to_catalogue[i+1] + 1)]
     source_ppn = ""
     found_volume_list = []
-    non_ixtheo_ppns = []
     ppns_linked = []
     links_to_add = {}
     links_to_add_nr = 0
@@ -251,6 +253,12 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     deduplicate_root.append(record)
                     continue
             urls.append(url)
+            # Special treatment for Harrassowitz-journals published on JSTOR
+            if zeder_id in ['1548']:
+                if doi is None:
+                    create_marc_field(record, {'tag': '024', 'ind1': '7', 'ind2': ' ',
+                                           'subfields': {'a': [url.replace('https://www.jstor.org/stable/', '')],
+                                                         '2': 'doi'}})
             dois.append(doi)
             title = get_subfield(record, '245', 'a')
             for exclude_regex in exclude:
@@ -409,7 +417,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     if ('volume' in entry) and ('issue' in entry) and ('pages' in entry):
                         if (entry['volume'] == volume) and (entry['issue'] == issue) and (
                                 entry['pages'] == pagination):
-                            if not entry['doi']:
+                            if not entry['doi'] and doi is not None:
                                 links_to_add[entry['id']] = {'to_remove': [], 'to_add': ['2051 ' + doi, '4950 ' + url + '$xR$3Volltext$4ZZ$534']}
                                 links_to_add_nr += 1
                             elif 'doi.org' in url:
@@ -426,7 +434,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
             for datafield in record.findall('{http://www.loc.gov/MARC21/slim}datafield'):
                 if datafield.attrib['tag'] == '935':
                     if datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text \
-                            not in ['mteo', 'zota', 'nbrk', 'erco', 'ixzs', 'ixrk']:
+                            not in ['mteo', 'zota', 'nbrk', 'erco', 'ixzs', 'ixrk', 'NABZ']:
                         print('deleted retrieve sign', datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
                     record.remove(datafield)
             for retrieve_sign in ['ixzs', 'ixrk', 'zota']:
@@ -540,15 +548,18 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                             responsibles_corrected[responsible_name] = url
                 if re.match(r'^,', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
                     append_to_postprocess = True
-                if re.match(r'^\w\., (?:\w\.\s?)+$', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
+                if re.match(r'^\w\.*, (?:\w\.?\s?)+$', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
                     gnd_link = responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="0"]')
                     if gnd_link is not None:
                         responsible.remove(gnd_link)
-                    responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = re.sub(r'^(\w\.), ((?:\w\.\s?)+)$', r'\2 \1', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
                     responsible.attrib['ind1'] = '0'
+                    responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = re.sub(
+                        r'^(\w\.*), ((?:\w\.?\s?)+)$', r'\2 \1',
+                        responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
                 if re.search(r'\s+\.\s+', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
                     responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = re.sub(r'\s+\.\s+', ' ',
                                                                                                           responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
+
             if url in review_links:
                 create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
                                                'subfields': {'a': ['Rezension'],
@@ -559,7 +570,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
             is_review = False
             if form_tag is None:
-                review_regex = r'([£$€](?:\s+)?\d+)|(\d+(?:\s+)?(?:([Pp]p)|(S\.)))|(\s+(?:([Pp]p)|(S))[.\s]\s*[\dXIVLCxivlc])|(\s+[Pp]\.\s*[\dXIVLCxivlc])|(\d+(?:\s+)?€)|(\s+((pagg?)|(Pagg?))\.\s+[\dXIVLCxivlc])'
+                review_regex = r'([£$€](?:\s+)?\d+)|(\d+(?:\s+)?(?:([Pp]p)|(S\.)))|(\s+(?:([Pp]p)|(S))[.\s]\s*[\dXIVLCxivlc])|(\s+[Pp]\.\s*[\dXIVLCxivlc]+\b)|(\d+(?:\s+)?€)|(\s+((pagg?)|(Pagg?))\.\s+[\dXIVLCxivlc]+\b)'
                 if re.search(r'[^\d]((?:\d{3}[\- ])?(?:\d[\-]?[\s]?){8,9}[\dXx])', title):
                     create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
                                                'subfields': {'a': ['Rezension'], '0': ['(DE-588)4049712-4', '(DE-627)106186019'], '2': ['gnd-content']}})
@@ -567,7 +578,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                     print('created tag Rezension for url', url)
                 elif re.search(review_regex, title):
                     result = re.search(review_regex, title).group(0)
-                    if not (re.search(r'S\.\s*I\.', title) and re.search(r'\s+S\.\s*I', result)):
+                    if not (re.search(r'S\.\s*I\.', title)):
                         print(re.search(review_regex, title))
                         print(title)
                         print('tagged nbrk Rezension', url)
@@ -614,15 +625,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
                 if all_ppns:
                     create_marc_field(record, {'tag': '887', 'ind1': ' ', 'ind2': ' ',
                                                'subfields': {'a': [comment], '2': ['ixzom']}})
-                online_records = [record for record in records_found if 'O' in records_found[record]['record_state']]
-                print_records = [record for record in records_found if 'A' in records_found[record]['record_state']]
-                for record_list in print_records, online_records:
-                    if not [record for record in record_list if records_found[record]['ixtheo']]:
-                        for state in ['v', 'u', 'n', 'r', 'x']:
-                            if [record for record in record_list if state in records_found[record]['record_state']]:
-                                non_ixtheo_ppns.append([record for record in record_list if state in records_found[record]['record_state']][0])
-                                # print([record for record in record_list if state in records_found[record]['record_state']][0])
-                                break
             check_abstract(record)
             journal_link_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="773"]'
                                             '/{http://www.loc.gov/MARC21/slim}subfield[@code="t"]')
@@ -645,9 +647,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int,
 
                 proper_root.append(record)
                 proper_nr += 1
-    if non_ixtheo_ppns:
-        with open(zeder_id + '_rezensierte_werke_nicht_ixtheo.json', 'w', newline='') as non_ixtheo_ppn_file:
-            json.dump(non_ixtheo_ppns, non_ixtheo_ppn_file)
     if links_to_add_nr > 0:
         with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zeder_id + '_links_to_add.json', 'w', newline='') as links_to_add_file:
             json.dump(links_to_add, links_to_add_file)
