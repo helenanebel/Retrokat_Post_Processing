@@ -15,7 +15,6 @@ def get_results(xml_soup, journal_ppn, ppn):
                 found_ppn = record.find('datafield', tag='003@').find('subfield', code='0').text
                 # print(found_ppn)
                 if record.find('datafield', tag='039B').find('subfield', code='9').text == journal_ppn:
-                    # hier muss über die Liste aller rezensierten Werke iteriert werden!
                     reviewed_works_a = [datafield.find('subfield', code='9').text for datafield in record.find_all('datafield', tag='039P')]
                     reviewed_works_b = [datafield.find('subfield', code='9').text for datafield in record.find_all('datafield', tag='039U')]
                     if ppn in reviewed_works_a:
@@ -39,29 +38,64 @@ def get_ppns_for_reciprocal_links(zeder_id, journal_ppn):
     timestamp = strftime('%Y%m%d')
     review_ppn_list = {}
     ssg1_list = []
+    ssg0_list = []
+    ssg1_append_list = []
+    ssg0_append_list = []
+    ssg1 = False
+    is_ssg1 = input('Soll das SSG-Kennzeichen 1 gesetzt werden? ')
+    if is_ssg1 == 'j':
+        ssg1 = True
     ssg0 = False
     is_ssg0 = input('Soll das SSG-Kennzeichen 0 gesetzt werden? ')
     if is_ssg0 == 'j':
         ssg0 = True
-    if zeder_id + '_rezensierte_werke_nicht_ixtheo.json' in os.listdir('final_additional_information'):
-        with open('final_additional_information/' + zeder_id + '_rezensierte_werke_nicht_ixtheo.json', 'r') as non_ixtheo_ppn_file:
-            non_ixtheo_ppns = json.load(non_ixtheo_ppn_file)
     file = zeder_id + '_ppns_linked.json'
     if file in os.listdir('final_additional_information'):
         with open('final_additional_information/' + file, 'r') as ppns_linked_file:
             ppns_linked = json.load(ppns_linked_file)
-        '''url = "http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml".format(
-            journal_ppn)
-        xml_data = urllib.request.urlopen(url)
-        xml_soup = BeautifulSoup(xml_data, features='lxml')
-        record = xml_soup.find('record')
-        ssg_signs = [field.find('subfield', code='a').text for field in record.find_all('datafield', tag='045V')]'''
-        for ppn in ppns_linked:
-            review_ppn = search_review(ppn, journal_ppn)
-            review_ppn_list[ppn] = review_ppn
-            print(ppn, review_ppn)
-            if ppn in non_ixtheo_ppns:
-                ssg1_list.append(ppn)
+            for ppn in ppns_linked:
+                review_ppn = search_review(ppn, journal_ppn)
+                if review_ppn is not None:
+                    ixtheo = False
+                    review_ppn_list[ppn] = review_ppn
+                    url = "http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml".format(
+                        ppn)
+                    xml_data = urllib.request.urlopen(url)
+                    xml_soup = BeautifulSoup(xml_data, features='lxml')
+                    record = xml_soup.find('record')
+                    if record is None:
+                        print(url)
+                        continue
+                    cods = [element.find('subfield', code='a').text for element in record.find_all('datafield', tag='016B')]
+                    for cod in ['mteo', 'redo', 'DTH5', 'AUGU', 'DAKR', 'MIKA', 'BIIN', 'KALD', 'GIRA']:
+                        if cod in cods:
+                            ixtheo = True
+                            break
+                    ssg_tags = [element.text for ssg_field in record.find_all('datafield', tag='045V') for element in ssg_field.find_all('subfield', code='a')]
+                    for ssg_tag in ['1', '0', '6,22']:
+                        if ssg_tag in ssg_tags:
+                            ixtheo = True
+                            break
+                    if not ixtheo:
+                        append_ssg = False
+                        for ssg_field in record.find_all('datafield', tag='045V'):
+                            if [element.text for element in ssg_field.find_all('subfield', code='a') if not element.text[0].isdigit()]:
+                                print('found new sign', ppn, [element.text for element in ssg_field.find_all('subfield', code='a') if not element.text[0].isdigit()])
+                                continue
+                            else:
+                                append_ssg = True
+                        if not append_ssg:
+                            if ssg1:
+                                ssg1_list.append(ppn)
+                                if ssg0:
+                                    ssg0_append_list.append(ppn)
+                            elif ssg0:
+                                ssg0_list.append(ppn)
+                        else:
+                            if ssg1:
+                                ssg1_append_list.append(ppn)
+                            if ssg0:
+                                ssg0_append_list.append(ppn)
     option = 'w'
     if timestamp + '_PPNs_4262_8910.csv' in os.listdir('review_information'):
         option = 'a'
@@ -70,14 +104,22 @@ def get_ppns_for_reciprocal_links(zeder_id, journal_ppn):
         csv_writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for ppn in review_ppn_list:
             csv_writer.writerow([ppn, review_ppn_list[ppn]])
-    if ssg1_list:
-        with open('review_information/' + timestamp + '_PPNs_5056_1.csv', option, newline='') as csvfile:
-            csv_writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            for ppn in ssg1_list:
-                csv_writer.writerow([ppn])
-        if ssg0:
-            shutil.copyfile('review_information/' + timestamp + '_PPNs_5056_1.csv',
-                            'review_information/' + timestamp + '_PPNs_5056_0.csv')
+    with open('review_information/' + timestamp + '_PPNs_5056_1.csv', option, newline='') as csvfile:
+        csv_writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for ppn in ssg1_list:
+            csv_writer.writerow([ppn])
+    with open('review_information/' + timestamp + '_PPNs_5056_add_1.csv', option, newline='') as csvfile:
+        csv_writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for ppn in ssg1_append_list:
+            csv_writer.writerow([ppn])
+    with open('review_information/' + timestamp + '_PPNs_5056_0.csv', option, newline='') as csvfile:
+        csv_writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for ppn in ssg0_append_list:
+            csv_writer.writerow([ppn])
+    with open('review_information/' + timestamp + '_PPNs_5056_add_0.csv', option, newline='') as csvfile:
+        csv_writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for ppn in ssg0_append_list:
+            csv_writer.writerow([ppn])
 
 
 if __name__ == '__main__':
@@ -94,3 +136,5 @@ if __name__ == '__main__':
             json.dump(processed_journals, journal_file)
     else:
         print('Diese Zeder-ID wurde bereits verarbeitet.')
+
+
