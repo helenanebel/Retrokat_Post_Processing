@@ -27,6 +27,11 @@ if __name__ == '__main__':
                     conf_dict[zeder_id]['conf_langs'] = lang_dict
                     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
                         json.dump(conf_dict, conf_file)
+                if 'detect_review_langs' not in conf_dict[zeder_id]:
+                    detect_review_langs = bool(input('Bitte geben Sie an, ob bei Rezensionen Spracherkennung durchgeführt werden soll: '))
+                    conf_dict[zeder_id]['detect_review_langs'] = detect_review_langs
+                    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
+                        json.dump(conf_dict, conf_file)
     # if zeder_id + '.json' not in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping'):
     get_jstor_links(zeder_id)
     record_nr = check_and_split_in_issues(zeder_id, conf_available)
@@ -46,7 +51,8 @@ if __name__ == '__main__':
         default_lang = input('Bitte geben Sie die Default-Sprache ein: ')
         langs = input('Bitte geben Sie die zulässigen Sprachen ein: ')
         conf_langs = json.loads(langs)
-        conf_dict[zeder_id] = {'exclude': exclude, 'period': period, 'eppn': eppn, 'lang': default_lang, 'conf_langs': conf_langs}
+        detect_review_langs = bool(input('Bitte geben Sie an, ob bei Rezensionen Spracherkennung durchgeführt werden soll: '))
+        conf_dict[zeder_id] = {'exclude': exclude, 'period': period, 'eppn': eppn, 'lang': default_lang, 'conf_langs': conf_langs, 'detect_review_langs': detect_review_langs}
         if input('Wollen Sie diese Konfigurationsangaben speichern (j/n)') == 'j':
             with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
                 json.dump(conf_dict, conf_file)
@@ -58,4 +64,5 @@ if __name__ == '__main__':
     exclude = conf_dict[zeder_id]['exclude'] + exclude_everywhere
     default_lang = conf_dict[zeder_id]['lang']
     conf_langs = conf_dict[zeder_id]['conf_langs']
-    transform(zeder_id, exclude, period, record_nr, default_lang, conf_langs)
+    detect_review_langs = conf_dict[zeder_id]['detect_review_langs']
+    transform(zeder_id, exclude, period, record_nr, default_lang, conf_langs, detect_review_langs)
