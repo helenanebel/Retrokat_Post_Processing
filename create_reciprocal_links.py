@@ -3,10 +3,17 @@ import urllib.request
 from bs4 import BeautifulSoup
 import json
 import csv
-import shutil
 from time import strftime
 
+review_ppns_ixtheo_print = []
+review_ppns_ixtheo_online = []
+record_states = {}
+reviewed_ppns_print = {}
+reviewed_ppns_online = {}
+prio_ppns_print = []
+prio_ppns_online = []
 
+# findet die PPN der Rezension
 def get_results(xml_soup, journal_ppn, ppn):
     review_ppn = None
     if xml_soup.find('zs:numberofrecords').text != '0':
@@ -22,7 +29,7 @@ def get_results(xml_soup, journal_ppn, ppn):
                     elif ppn in reviewed_works_b:
                         print('other branch')
     else:
-        print('no reviews found')
+        print('no reviews found:', ppn)
     return review_ppn
 
 
@@ -58,14 +65,25 @@ def get_ppns_for_reciprocal_links(zeder_id, journal_ppn):
                 if review_ppn is not None:
                     ixtheo = False
                     review_ppn_list[ppn] = review_ppn
-                    url = "http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml".format(
-                        ppn)
+                    url = "http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml".format(ppn)
                     xml_data = urllib.request.urlopen(url)
                     xml_soup = BeautifulSoup(xml_data, features='lxml')
                     record = xml_soup.find('record')
                     if record is None:
                         print(url)
                         continue
+                    record_state = record.find('datafield', tag='002@').find('subfield', code='0').text
+                    record_states[ppn] = record_state
+                    if (record_state[0] not in ["A", "O"]) or (record_state[1] not in ['a', 'c', 'd', 'F', 'f']) or (record_state[2] not in ['u', 'v', 'n']):
+                        continue
+                    if review_ppn not in reviewed_ppns_print:
+                        reviewed_ppns_print[review_ppn] = []
+                    if review_ppn not in reviewed_ppns_online:
+                        reviewed_ppns_online[review_ppn] = []
+                    if record_state[0] == 'O':
+                        reviewed_ppns_online[review_ppn].append(ppn)
+                    if record_state[0] == 'A':
+                        reviewed_ppns_print[review_ppn].append(ppn)
                     cods = [element.find('subfield', code='a').text for element in record.find_all('datafield', tag='016B')]
                     for cod in ['mteo', 'redo', 'DTH5', 'AUGU', 'DAKR', 'MIKA', 'BIIN', 'KALD', 'GIRA']:
                         if cod in cods:
@@ -96,30 +114,75 @@ def get_ppns_for_reciprocal_links(zeder_id, journal_ppn):
                                 ssg1_append_list.append(ppn)
                             if ssg0:
                                 ssg0_append_list.append(ppn)
+                    else:
+                        if (review_ppn not in review_ppns_ixtheo_online) and (record_state[0] == 'O'):
+                            review_ppns_ixtheo_online.append(review_ppn)
+                        if (review_ppn not in review_ppns_ixtheo_print) and (record_state[0] == 'A'):
+                            review_ppns_ixtheo_print.append(review_ppn)
     option = 'w'
     if timestamp + '_PPNs_4262_8910.csv' in os.listdir('review_information'):
         option = 'a'
-    print(option)
+    for review_ppn in reviewed_ppns_print:
+        pub_list = reviewed_ppns_print[review_ppn]
+        ppns_state_u = [pub for pub in pub_list if record_states[pub][2] == 'u']
+        ppns_state_v = [pub for pub in pub_list if record_states[pub][2] == 'v']
+        ppns_state_n = [pub for pub in pub_list if record_states[pub][2] == 'n']
+        if ppns_state_u:
+            prio_ppns_print.append(ppns_state_u[0])
+        elif ppns_state_v:
+            prio_ppns_print.append(ppns_state_v[0])
+        elif ppns_state_n:
+            prio_ppns_print.append(ppns_state_n[0])
+    for review_ppn in reviewed_ppns_online:
+        pub_list = reviewed_ppns_print[review_ppn]
+        ppns_state_u = [pub for pub in pub_list if record_states[pub][2] == 'u']
+        ppns_state_v = [pub for pub in pub_list if record_states[pub][2] == 'v']
+        ppns_state_n = [pub for pub in pub_list if record_states[pub][2] == 'n']
+        if ppns_state_u:
+            prio_ppns_print.append(ppns_state_u[0])
+        elif ppns_state_v:
+            prio_ppns_print.append(ppns_state_v[0])
+        elif ppns_state_n:
+            prio_ppns_print.append(ppns_state_n[0])
     with open('review_information/' + timestamp + '_PPNs_4262_8910.csv', option, newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for ppn in review_ppn_list:
             csv_writer.writerow([ppn, review_ppn_list[ppn]])
+    ssg1_list = list(set(ssg1_list))
+    ssg0_list = list(set(ssg0_list))
+    ssg1_append_list = list(set(ssg1_append_list))
+    ssg0_append_list = list(set(ssg0_append_list))
     with open('review_information/' + timestamp + '_PPNs_5056_1.csv', option, newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for ppn in ssg1_list:
-            csv_writer.writerow([ppn])
+            if (review_ppn_list[ppn] in review_ppns_ixtheo_online) or (review_ppn_list[ppn] in review_ppns_ixtheo_online):
+                continue
+            elif (ppn in prio_ppns_print) or (ppn in prio_ppns_online):
+                csv_writer.writerow([ppn])
     with open('review_information/' + timestamp + '_PPNs_5056_add_1.csv', option, newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for ppn in ssg1_append_list:
-            csv_writer.writerow([ppn])
+            if (review_ppn_list[ppn] in review_ppns_ixtheo_online) or (
+                    review_ppn_list[ppn] in review_ppns_ixtheo_online):
+                continue
+            elif (ppn in prio_ppns_print) or (ppn in prio_ppns_online):
+                csv_writer.writerow([ppn])
     with open('review_information/' + timestamp + '_PPNs_5056_0.csv', option, newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        for ppn in ssg0_append_list:
-            csv_writer.writerow([ppn])
+        for ppn in ssg0_list:
+            if (review_ppn_list[ppn] in review_ppns_ixtheo_online) or (
+                    review_ppn_list[ppn] in review_ppns_ixtheo_online):
+                continue
+            elif (ppn in prio_ppns_print) or (ppn in prio_ppns_online):
+                csv_writer.writerow([ppn])
     with open('review_information/' + timestamp + '_PPNs_5056_add_0.csv', option, newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for ppn in ssg0_append_list:
-            csv_writer.writerow([ppn])
+            if (review_ppn_list[ppn] in review_ppns_ixtheo_online) or (
+                    review_ppn_list[ppn] in review_ppns_ixtheo_online):
+                continue
+            elif (ppn in prio_ppns_print) or (ppn in prio_ppns_online):
+                csv_writer.writerow([ppn])
 
 
 if __name__ == '__main__':
@@ -137,4 +200,5 @@ if __name__ == '__main__':
     else:
         print('Diese Zeder-ID wurde bereits verarbeitet.')
 
-
+# in 150-KB-Portionen teilen (11.000 Datensätze)
+# Dafür Skript schreiben
