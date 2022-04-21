@@ -25,7 +25,7 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_ProduktivDB/files_r
             result_root = result_tree.getroot()
             records = result_root.findall('.//{http://www.loc.gov/MARC21/slim}record')
             total_record_number += len(records)
-            if total_record_number > 18000:
+            if total_record_number > 20000:
                 print(colored('total record number exceeds maximum capazity of ftp-server.', 'red'))
                 continue
             paginations = ['-']
