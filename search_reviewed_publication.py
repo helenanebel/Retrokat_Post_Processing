@@ -41,7 +41,6 @@ def check_response_for_priority_of_results(xml_soup, review_year):
             if record.find('datafield', tag='006X'):
                 if record.find('datafield', tag='006X').find('subfield', code='i'):
                     if re.search(r'^EPF', record.find('datafield', tag='006X').find('subfield', code='i').text):
-                        print('epf found:', ppn)
                         continue
             isbn = None
             if record.find('datafield', tag='004A'):
@@ -78,7 +77,6 @@ def encode_in_ascii_and_remove_whitespaces_and_points(string: str, is_author, is
 
 def search_publication(title, author, year, place, review_year):
     if (title.count(" ") < 2) and not year and not place:
-        print('title too short', title, '--', author, '--', year, '--', place, '--', review_year)
         return {}
     pub_dict = {}
     pub_dict["tit"] = encode_in_ascii_and_remove_whitespaces_and_points(title, False, False)
@@ -106,26 +104,32 @@ def search_publication(title, author, year, place, review_year):
 
 
 def search_publication_with_isbn(isbn: str):
+    records_found = {}
+    isbn = isbn.replace(' ', '')
     isbn = isbn.replace('‑', '')
+    isbn = isbn.replace('-', '')
     if not isbn:
         print('no isbn found')
         return {}
     if len(isbn) < 9:
-        print('isbn too short')
+        print('isbn too short', isbn)
         return {}
     url = 'http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.isb%3D' + isbn + '&maximumRecords=10&recordSchema=picaxml'
-    print(url)
-    xml_data = urllib.request.urlopen(url)
-    xml_soup = BeautifulSoup(xml_data, features='lxml')
-    records_found = check_response_for_priority_of_results(xml_soup, 2021)
-    if not records_found:
-        if 'x' not in isbn.lower():
-            if (9 <= len(isbn) <= 10):
-                isbn = isbn + 'x'
-                url = 'http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.isb%3D' + isbn + '&maximumRecords=10&recordSchema=picaxml'
-                xml_data = urllib.request.urlopen(url)
-                xml_soup = BeautifulSoup(xml_data, features='lxml')
-                records_found = check_response_for_priority_of_results(xml_soup, 2021)
+    try:
+        xml_data = urllib.request.urlopen(url).read().decode('UTF-8')
+        xml_soup = BeautifulSoup(xml_data, features='lxml')
+        records_found = check_response_for_priority_of_results(xml_soup, 2021)
+        if not records_found:
+            if 'x' not in isbn.lower():
+                if (9 <= len(isbn) <= 10):
+                    isbn = isbn + 'x'
+                    url = 'http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.isb%3D' + isbn + '&maximumRecords=10&recordSchema=picaxml'
+                    xml_data = urllib.request.urlopen(url).read().decode('UTF-8')
+                    xml_soup = BeautifulSoup(xml_data, features='lxml')
+                    records_found = check_response_for_priority_of_results(xml_soup, 2021)
+    except Exception as e:
+        print(url)
+        print(e)
     return records_found
 
 
