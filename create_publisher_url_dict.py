@@ -41,8 +41,8 @@ def get_url_dict(zeder_id: str):
         year = get_subfield(record, '264', 'c')
         volume = get_subfield(record, '936', 'd')
         if volume:
-            if re.findall(r'(\d+).+?(\d+)', volume):
-                volume = re.sub(r'(\d+).+?(\d+)', r'\1/\2', volume)
+            if re.findall(r'(\d+)[^\d]+?(\d+)', volume):
+                volume = re.sub(r'(\d+)[^\d]+?(\d+)', r'\1/\2', volume)
             if re.search(r'[^\d/]', volume):
                 new_volume = re.findall(r'[^\d](\d{1,3})[^\d]', volume)
                 if new_volume:
@@ -61,8 +61,8 @@ def get_url_dict(zeder_id: str):
         issue = get_subfield(record, '936', 'e')
         if issue:
             if re.search(r'[^\d/]', issue):
-                if re.findall(r'(\d+).+?(\d+)', issue):
-                    issue = re.sub(r'(\d+).+?(\d+)', r'\1/\2', issue)
+                if re.findall(r'(\d+)[^\d]+?(\d+)', issue):
+                    issue = re.sub(r'(\d+)[^\d]+?(\d+)', r'\1/\2', issue)
                 else:
                     new_issue = ''
                     if re.findall(r'^(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)$', issue):
