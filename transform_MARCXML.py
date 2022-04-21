@@ -3,7 +3,6 @@ import os
 import xml.etree.ElementTree as ElementTree
 import re
 from search_reviewed_publication import search_publication, search_publication_with_isbn
-import csv
 from convert_roman_numbers import from_roman
 from hebrew_numbers import gematria_to_int
 from bs4 import BeautifulSoup
@@ -13,6 +12,9 @@ from language_detection import detect_title
 month_dict = {'January': '1', 'February': '2', 'March': '3', 'April': '4', 'May': '5',
               'June': '6', 'July': '7', 'August': '8', 'September': '9', 'October': '10',
               'November': '11', 'December': '12',
+              'Januar': '1', 'Februar': '2', 'März': '3', 'Mai': '5',
+              'Juni': '6', 'Juli': '7', 'Juli/August': '7/8', 'Oktober': '10',
+              'Dezember': '12',
               '3e livraison': '3', '4e livraison': '4', '2e livraison': '2', '1re livraison': '1',}
 
 
@@ -177,7 +179,7 @@ def check_and_split_in_issues(zeder_id, conf_available):
     return record_nr
 
 
-def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int], record_nr, default_lang: str, conf_langs: list[str]):
+def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int], record_nr, default_lang: str, conf_langs: list[str], detect_review_langs: bool):
     responsibles_corrected = {}
     personal_titles = {}
     total_jstor_fails = 0
@@ -329,13 +331,27 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                             differences_from_source = True
                         else:
                             if issue in month_dict:
-                                issue = month_dict[issue]
+                                new_issue = month_dict[issue]
+                                issue_tag = \
+                                    record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
+                                                '/{http://www.loc.gov/MARC21/slim}subfield[@code="e"]')
+                                issue_tag.text = str(new_issue)
+                                issue = new_issue
                                 differences_from_source = True
                             else:
                                 print(issue, 'not found in dict')
                                 append_to_postprocess = True
+
             pagination = get_subfield(record, '936', 'h')
             if pagination:
+                if zeder_id == "1153" and re.findall(r'(\d+)\s+f', pagination):
+                    first_page = re.findall(r'(\d+)\s+f', pagination)[0]
+                    pagination_tag = \
+                        record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
+                                    '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
+                    pagination_tag.text = first_page + '-' + str(int(first_page) +1)
+                    pagination = pagination_tag.text
+                    differences_from_source = True
                 if '–' in pagination:
                     pagination = pagination.replace('–', '-')
                     pagination_tag = \
@@ -446,38 +462,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 # print(title)
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                            'subfields': {'a': ['nbrk'], '2': ['LOK']}})
-            language_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]')
-            if not language_tag:
-                detected_lang = detect_title(title)
-                if detected_lang in conf_langs and "[Rezension von: " not in title:
-                    print('language', detected_lang, 'will be set for title', title)
-                    create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
-                                               'subfields': {'a': [detected_lang]}})
-                else:
-                    print("no language:", title)
-                    if default_lang != "":
-                        create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
-                                                   'subfields': {'a': [default_lang]}})
-                    else:
-                        create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
-                                               'subfields': {'a': ['nbrk'], '2': ['LOK']}})
-            else:
-                if language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text not in all_languages:
-                    all_languages.append(language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
-                if language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text not in conf_langs:
-                    detected_lang = detect_title(title)
-                    if detected_lang in conf_langs and "[Rezension von: " not in title:
-                        language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = detected_lang
-                    else:
-                        print("no language:", title)
-                        if default_lang != "":
-                            language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = default_lang
-                        else:
-                            record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]'))
-                            create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
-                                                       'subfields': {'a': ['nbrk'], '2': ['LOK']}})
-                elif "[Rezension von: " in title:
-                    language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = default_lang
             if zeder_id in present_record_list:
                 delete_entries = []
                 if [year in present_record_lookup_years]:
@@ -516,6 +500,9 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                                         discard = True
                     for entry in delete_entries:
                         present_record_list[zeder_id].remove(entry)
+            if discard:
+                discarded_nr += 1
+                continue
             if any([re.search(regex, title, re.IGNORECASE) for regex in [r'^errat*', r'^corrigend*', r'^correct*', r'^berichtigung*', r'^omission*',
                                                                          r'\berrat((um)|(a))\b', r'\bcorrigend((um)|(a))\b', r'\bcorrections?\b', r'\bberichtigung\b']]):
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
@@ -625,6 +612,44 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 if all_ppns:
                     create_marc_field(record, {'tag': '887', 'ind1': ' ', 'ind2': ' ',
                                                'subfields': {'a': [comment], '2': ['ixzom']}})
+            language_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]')
+            if not language_tag:
+                detected_lang = detect_title(title)
+                if detected_lang in conf_langs:
+                    if "[Rezension von: " not in title and "(Book Review)" not in title:
+                        print('language', detected_lang, 'will be set for title', title)
+                    create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
+                                               'subfields': {'a': [detected_lang]}})
+                else:
+                    if "[Rezension von: " not in title and "(Book Review)" not in title:
+                        print("no language:", title)
+                    if default_lang != "":
+                        create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
+                                                   'subfields': {'a': [default_lang]}})
+                    else:
+                        create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
+                                                   'subfields': {'a': ['nbrk'], '2': ['LOK']}})
+            else:
+                if language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text not in all_languages:
+                    all_languages.append(language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
+                if language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text not in conf_langs:
+                    detected_lang = detect_title(title)
+                    if detected_lang in conf_langs and "[Rezension von: " not in title:
+                        language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = detected_lang
+                    else:
+                        print("no language:", title)
+                        if default_lang != "":
+                            language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = default_lang
+                        else:
+                            record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]'))
+                            create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
+                                                       'subfields': {'a': ['nbrk'], '2': ['LOK']}})
+                elif "[Rezension von: " in title:
+                    language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = default_lang
+            if is_review and not detect_review_langs:
+                record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]'))
+                create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
+                                           'subfields': {'a': [default_lang]}})
             check_abstract(record)
             journal_link_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="773"]'
                                             '/{http://www.loc.gov/MARC21/slim}subfield[@code="t"]')
