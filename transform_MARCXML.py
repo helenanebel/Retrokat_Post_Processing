@@ -179,7 +179,7 @@ def check_and_split_in_issues(zeder_id, conf_available):
     return record_nr
 
 
-def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int], record_nr, default_lang: str, conf_langs: list[str], detect_review_langs: bool):
+def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int], record_nr, default_lang: str, conf_langs: list[str], detect_review_langs: bool, add_jstor_data: str):
     responsibles_corrected = {}
     personal_titles = {}
     total_jstor_fails = 0
@@ -204,6 +204,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
     excluded_titles = []
     review_links = []
     jstor_dict = {}
+    languages_dict = {}
+    review_dict = {}
     all_sources = {}
     all_languages = []
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zeder_id + '.json', 'r') as missing_link_file:
@@ -222,6 +224,13 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
         with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping/' + zeder_id + '.json', 'r',
                   encoding="utf-8") as jstor_file:
             jstor_dict = json.load(jstor_file)
+    if zeder_id + '_languages.json' in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping'):
+        with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping/' + zeder_id + '_languages.json', 'r',
+                  encoding="utf-8") as jstor_file:
+            languages_dict = json.load(jstor_file)
+    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping/' + zeder_id + '_reviews.json', 'r',
+                  encoding="utf-8") as review_data_file:
+        review_dict = json.load(review_data_file)
     post_process_tree = ElementTree.parse('marcxml_empty.xml')
     post_process_root = post_process_tree.getroot()
     proper_tree = ElementTree.parse('marcxml_empty.xml')
@@ -546,7 +555,12 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 if re.search(r'\s+\.\s+', responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text):
                     responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = re.sub(r'\s+\.\s+', ' ',
                                                                                                           responsible.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
-
+            if url in jstor_dict:
+                if jstor_dict[url] in review_dict:
+                    print(jstor_dict[url])
+                    create_marc_field(record, {'tag': '650', 'ind1': ' ', 'ind2': '4',
+                                               'subfields': {'a': [review_dict[jstor_dict[url]]]}})
+                    print('added jstor review-tag:', url, review_dict[jstor_dict[url]])
             if url in review_links:
                 create_marc_field(record, {'tag': '655', 'ind1': ' ', 'ind2': '7',
                                                'subfields': {'a': ['Rezension'],
@@ -650,6 +664,13 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]'))
                 create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
                                            'subfields': {'a': [default_lang]}})
+            if url in jstor_dict:
+                if jstor_dict[url] in languages_dict:
+                    record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]'))
+                    create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
+                                               'subfields': {'a': [languages_dict[jstor_dict[url]]]}})
+                    if len(languages_dict[jstor_dict[url]]) != 3:
+                        print('added jstor language:', url, languages_dict[jstor_dict[url]])
             check_abstract(record)
             journal_link_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="773"]'
                                             '/{http://www.loc.gov/MARC21/slim}subfield[@code="t"]')
