@@ -11,10 +11,12 @@ def create_jstor_url_dict(zeder_id: str):
     else:
         total_nr = 0
         jstor_dict = {}
+        languages_dict = {}
         with open ('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_csv/' + zeder_id + '.csv', 'r', encoding="utf-8") as jstor_csv_file:
             jstor_csv = csv.reader(jstor_csv_file, quotechar='"', delimiter=',')
             row_nr = 0
             for row in jstor_csv:
+                languages_dict[row[0]] = row[15]
                 row_nr += 1
                 if row_nr < 2:
                     continue
@@ -86,4 +88,6 @@ def create_jstor_url_dict(zeder_id: str):
                                         print('added', year, matching_volume, volume, pagination)
         with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_json/' + zeder_id + '.json', 'w') as json_file:
             json.dump(jstor_dict, json_file)
+        with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping/' + zeder_id + '_languages.json', 'w') as json_languages_file:
+            json.dump(languages_dict, json_languages_file)
         return True
