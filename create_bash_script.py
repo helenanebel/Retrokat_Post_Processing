@@ -47,7 +47,7 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                     continue
                 elif do_harvest == ['111']:
                     get_urls(zid)
-                    if zid + '_failing_urls.json' not in os.listdir():
+                    if zid + '_failing_links.json' not in os.listdir():
                         raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{0}.xml .\n'
                         download_command = raw_download_command.format(zid)
                         download_command_file.write(download_command)
@@ -62,15 +62,19 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                         is_vr = True
                         vr_nr = 0
                         conf_nr = 0
+                        sh_file.write('wait;' + 'mkdir ' + zid + '_out;\n')
                         vr_file = open('C:/Users/hnebel/Documents/conf-files/' + zid + '.conf', 'w',
                                        newline='\n')
                         upload_files.append(zid + '.conf')
                         vr_file.write(zotero_harvester_header)
                         article_nr_in_file = 0
-                        with open(zid + '_failing_urls.json') as article_link_file:
+                        with open(zid + '_failing_links.json') as article_link_file:
                             article_links = json.load(article_link_file)
+                            if zid + '.json' in os.listdir('article_links/'):
+                                with open('article_links/' + zid + '.json') as article_link_file:
+                                    vr_nr = len(json.load(article_link_file))
                         raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{1}.xml .\n'
-                        raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" &> "{1}.out";\n'
+                        raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" &> "{0}_out/{1}.out";\n'
                         for article_link in article_links:
                             vr_nr += 1
                             # zotero_crawl_url_regex auskommentieren!
@@ -87,6 +91,7 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                             muse_conf = muse_conf.replace('\n\n', '\n')
                             muse_conf = muse_conf.replace(title, journal_title + '_' + str(vr_nr))
                             title = journal_title + '_' + str(vr_nr)
+                            print(title)
                             vr_file.write(muse_conf + '\n')
                             download_command = raw_download_command.format(zid, zid + '_' + str(vr_nr))
                             download_command_file.write(download_command)
@@ -130,18 +135,24 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                         muse_conf = muse_conf.replace('\n\n', '\n')
                         muse_conf = muse_conf.replace(title, journal_title + '_' + str(vr_nr))
                         title = journal_title + '_' + str(vr_nr)
-                        vr_file.write(muse_conf + '\n')
+                        try:
+
+                            vr_file.write(muse_conf + '\n')
+                        except:
+                            print(muse_conf)
                         download_command = raw_download_command.format(zid, zid + '_' + str(vr_nr))
                         download_command_file.write(download_command)
                         harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(vr_nr), title)
                         sh_file.write('wait;' + harvesting_command)
                         if do_harvest == ['333']:
-                            sh_file.write('wait; sleep 30s;\n')
-                            waiting_time += 30
-                        if (conf_nr % 701) == 0 and (conf_nr != 0):
+                            sh_file.write('wait; sleep 15s;\n')
+                            waiting_time += 15
+                        if (conf_nr % 350) == 0 and (conf_nr != 0):
                             if do_harvest == ['333']:
                                 sh_file.write('wait; sleep 20h;\n')
-                                # bei Dialnet ca. 20 min warten nach 15 Artikeln, bei MUSE nach ca. 600 Artikeln 20 h warten.
+                                # bei Dialnet ca. 20 min warten nach 15 Artikeln,
+                                # bei MUSE nach ca. 600 Artikeln 20 h warten.
+                                # bei Brill ca. 5 min warten nach 50 Artikeln (Schätzung)
                                 waiting_time += 72000
                             # sh_file.write('wait; sudo systemctl restart zts;\n')
                         conf_nr += 1
