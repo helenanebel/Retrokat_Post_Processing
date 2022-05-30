@@ -21,13 +21,15 @@ def get_results(xml_soup, journal_ppn, ppn):
             if record.find('datafield', tag='002@').find('subfield', code='0').text == 'Osn':
                 found_ppn = record.find('datafield', tag='003@').find('subfield', code='0').text
                 # print(found_ppn)
-                if record.find('datafield', tag='039B').find('subfield', code='9').text == journal_ppn:
-                    reviewed_works_a = [datafield.find('subfield', code='9').text for datafield in record.find_all('datafield', tag='039P')]
-                    reviewed_works_b = [datafield.find('subfield', code='9').text for datafield in record.find_all('datafield', tag='039U')]
-                    if ppn in reviewed_works_a:
-                        review_ppn = found_ppn
-                    elif ppn in reviewed_works_b:
-                        print('other branch')
+                if record.find('datafield', tag='039B'):
+                    if record.find('datafield', tag='039B').find('subfield', code='9'):
+                        if record.find('datafield', tag='039B').find('subfield', code='9').text == journal_ppn:
+                            reviewed_works_a = [datafield.find('subfield', code='9').text for datafield in record.find_all('datafield', tag='039P')]
+                            reviewed_works_b = [datafield.find('subfield', code='9').text for datafield in record.find_all('datafield', tag='039U')]
+                            if ppn in reviewed_works_a:
+                                review_ppn = found_ppn
+                            elif ppn in reviewed_works_b:
+                                print('other branch')
     else:
         print('no reviews found:', ppn)
     return review_ppn
