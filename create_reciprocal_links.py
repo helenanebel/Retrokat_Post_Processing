@@ -36,7 +36,7 @@ def get_results(xml_soup, journal_ppn, ppn):
 
 
 def search_review(ppn, journal_ppn):
-    url = 'http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.1049%3D{0}+and+pica.1045%3Drel-tt+and+pica.1001%3Db&maximumRecords=5&recordSchema=picaxml'.format(ppn)
+    url = 'https://sru.bsz-bw.de/cbsx?version=1.1&operation=searchRetrieve&query=pica.1049%3D{0}+and+pica.1045%3Drel-tt+and+pica.1001%3Db&maximumRecords=10&recordSchema=picaxml&x-username=s2304&x-password=3i1Q'.format(ppn)
     xml_data = urllib.request.urlopen(url)
     xml_soup = BeautifulSoup(xml_data, features='lxml')
     review_ppn = get_results(xml_soup, journal_ppn, ppn)
@@ -67,7 +67,7 @@ def get_ppns_for_reciprocal_links(zeder_id, journal_ppn):
                 if review_ppn is not None:
                     ixtheo = False
                     review_ppn_list[ppn] = review_ppn
-                    url = "http://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml".format(ppn)
+                    url = 'https://sru.bsz-bw.de/cbsx?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml&x-username=s2304&x-password=3i1Q'.format(ppn)
                     xml_data = urllib.request.urlopen(url)
                     xml_soup = BeautifulSoup(xml_data, features='lxml')
                     record = xml_soup.find('record')
