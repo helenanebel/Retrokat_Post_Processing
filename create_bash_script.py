@@ -13,11 +13,13 @@ all_zids = []
 time = datetime.now()
 timestamp = time.strftime("%y-%m-%d__%H_%M")
 download_command_file = open('C:/Users/hnebel/Documents/download_commands_' + timestamp + '.txt', 'w')
+check_success_file = open('C:/Users/hnebel/Documents/check_success_' + timestamp + '.txt', 'w')
+raw_check_success_command = 'cat {0}_*.out | egrep -c "Skipped \(undesired item type\): [^0]"\ncat {0}_*.out | egrep -c "Unsuccessful: [^0]"\ncat {0}_*.out | egrep -c "Unsuccessful *: [^0]"\ncat {0}_*.out | grep -c \'unable to normalize language: "*\'\ncat {0}_*.out | grep -c "couldn\'t convert record"\ncat {0}_*.out | grep -c "Aborted (core dumped)"\ncat {0}_*.out | egrep -c "Skipped \(exclusion filter\): [^0]"\nfind . \( \( -name "{0}_*.out" \) -prune -a \( -size -4100c \) -prune \) -a -print\n\nfind . -name "{0}_*.out" -exec grep -H "Aborted (core dumped)" {{}} \;\n\nfind . -name "{0}_*.out" -exec egrep -H "Skipped \(exclusion filter\): [^0]" {{}} \;\n\nfind . -name "{0}_*.out" -exec egrep -H "Skipped \(undesired item type\): [^0]" {{}} \;\n\nfind . -name "{0}_*.out" -exec egrep -H "Unsuccessful: [^0]" {{}} \;\n\nfind . -name "{0}_*.out" -exec egrep -H "Unsuccessful *: [^0]" {{}} \;\n\nfind . -name "{0}_*.out" -exec grep -H \'unable to normalize language: "*\' {{}} \;\n\nfind . -name "{0}_*.out" -exec grep -H "couldn\'t convert record" {{}} \;\n\n\n'
 total_journal_number = 0
 is_vr = False
 with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as sh_file:
     sh_file.write('# !/bin/bash\n')
-    sh_file.write('wait; sudo systemctl restart zts;\n')
+    sh_file.write('wait; sudo systemctl restart zts;\nsleep 1m;\n')
     with open('C:/Users/hnebel/Documents/zotero_harvester.conf', 'r', encoding="utf-8") as conf_file:
         get_conf = False
         search_id = False
@@ -51,9 +53,12 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                         raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{0}.xml .\n'
                         download_command = raw_download_command.format(zid)
                         download_command_file.write(download_command)
-                        raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={0}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/zotero_harvester.conf" "JOURNAL" "{1}" &> "{0}.out";\n'
+                        raw_harvesting_command = '/usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={0}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/zotero_harvester.conf" "JOURNAL" "{1}" > "{0}.out" 2>&1;\n'
                         harvesting_command = raw_harvesting_command.format(zid, title)
                         sh_file.write('wait; ' + harvesting_command)
+                        raw_check_success_command_single_file = 'cat {0}.out | egrep -c "Skipped \(undesired item type\): [^0]"\ncat {0}.out | egrep -c "Unsuccessful: [^0]"\ncat {0}.out | egrep -c "Unsuccessful *: [^0]"\ncat {0}.out | grep -c \'unable to normalize language: "*\'\ncat {0}.out | grep -c "couldn\'t convert record"\ncat {0}.out | grep -c "Aborted (core dumped)"\ncat {0}.out | egrep -c "Skipped \(exclusion filter\): [^0]"\nfind . \( \( -name "{0}.out" \) -prune -a \( -size -4100c \) -prune \) -a -print\n\nfind . -name "{0}.out" -exec grep -H "Aborted (core dumped)" {{}} \;\n\nfind . -name "{0}.out" -exec egrep -H "Skipped \(exclusion filter\): [^0]" {{}} \;\n\nfind . -name "{0}.out" -exec egrep -H "Skipped \(undesired item type\): [^0]" {{}} \;\n\nfind . -name "{0}.out" -exec egrep -H "Unsuccessful: [^0]" {{}} \;\n\nfind . -name "{0}.out" -exec egrep -H "Unsuccessful *: [^0]" {{}} \;\n\nfind . -name "{0}.out" -exec grep -H \'unable to normalize language: "*\' {{}} \;\n\nfind . -name "{0}.out" -exec grep -H "couldn\'t convert record" {{}} \;\n\n\n'
+                        check_success_command = raw_check_success_command_single_file.format(zid)
+                        check_success_file.write(check_success_command)
                         total_journal_number += 1
                         search_id = False
                     else:
@@ -73,8 +78,7 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                             if zid + '.json' in os.listdir('article_links/'):
                                 with open('article_links/' + zid + '.json') as article_link_file:
                                     vr_nr = len(json.load(article_link_file))
-                        raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{1}.xml .\n'
-                        raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" &> "{0}_out/{1}.out";\n'
+                        raw_harvesting_command = '/usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" > "{0}_out/{1}.out" 2>&1;\n'
                         for article_link in article_links:
                             vr_nr += 1
                             # zotero_crawl_url_regex auskommentieren!
@@ -93,15 +97,20 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                             title = journal_title + '_' + str(vr_nr)
                             print(title)
                             vr_file.write(muse_conf + '\n')
-                            download_command = raw_download_command.format(zid, zid + '_' + str(vr_nr))
-                            download_command_file.write(download_command)
                             harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(vr_nr), title)
                             sh_file.write('wait;' + harvesting_command)
                             sh_file.write('wait; sleep 10s;\n')
                             waiting_time += 10
                             if conf_nr % 150 == 0:
-                                sh_file.write('wait; sudo systemctl restart zts;\n')
+                                sh_file.write('wait; sudo systemctl restart zts;\nsleep 1m;\n')
                             conf_nr += 1
+                        raw_download_command = 'scp -r hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo {0}\n'
+                        download_command = raw_download_command.format(zid)
+                        download_command_file.write(download_command)
+                        check_success_command = raw_check_success_command.format(zid)
+                        check_success_file.write(check_success_command)
+                        check_success_command = raw_check_success_command.format(zid)
+                        check_success_file.write(check_success_command)
                         print(vr_nr)
                         vr_file.close()
                         total_journal_number += 1
@@ -121,8 +130,8 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                     article_nr_in_file = 0
                     with open('article_links/' + zid + '.json') as article_link_file:
                         article_links = json.load(article_link_file)
-                    raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{1}.xml .\n'
-                    raw_harvesting_command = 'nohup /usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" &> "{0}_out/{1}.out";\n'
+                    raw_harvesting_command = '/usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" > "{0}_out/{1}.out" 2>&1;\n'
+
                     for article_link in article_links:
                         vr_nr += 1
                         # zotero_crawl_url_regex auskommentieren!
@@ -140,32 +149,36 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                             vr_file.write(muse_conf + '\n')
                         except:
                             print(muse_conf)
-                        download_command = raw_download_command.format(zid, zid + '_' + str(vr_nr))
-                        download_command_file.write(download_command)
                         harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(vr_nr), title)
                         sh_file.write('wait;' + harvesting_command)
                         if do_harvest == ['333']:
                             sh_file.write('wait; sleep 15s;\n')
                             waiting_time += 15
-                        if (conf_nr % 350) == 0 and (conf_nr != 0):
+                        if (conf_nr % 400) == 0 and (conf_nr != 0):
                             if do_harvest == ['333']:
-                                sh_file.write('wait; sleep 20h;\n')
+                                sh_file.write('wait; sleep 16h;\n')
                                 # bei Dialnet ca. 20 min warten nach 15 Artikeln,
                                 # bei MUSE nach ca. 600 Artikeln 20 h warten.
                                 # bei Brill ca. 5 min warten nach 50 Artikeln (Schätzung)
-                                waiting_time += 72000
+                                waiting_time += 57600
                             # sh_file.write('wait; sudo systemctl restart zts;\n')
                         conf_nr += 1
+                    raw_download_command = 'scp -r hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo {0}\n'
+                    download_command = raw_download_command.format(zid)
+                    download_command_file.write(download_command)
+                    check_success_command = raw_check_success_command.format(zid)
+                    check_success_file.write(check_success_command)
                     print(vr_nr)
                     vr_file.close()
                     total_journal_number += 1
                     search_id = False
                     print('Wartezeit:', waiting_time/3600)
                 if total_journal_number % 4 == 0:
-                    sh_file.write('wait; sudo systemctl restart zts;\n')
+                    sh_file.write('wait; sudo systemctl restart zts;\nsleep 1m;\n')
                 sh_file.write('wait; sleep 15m;\n')
 print(total_journal_number)
 download_command_file.close()
+check_success_file.close()
 copy2('C:/Users/hnebel/Documents/zotero_harvester.conf', 'W:/FID-Projekte/Team Retro-Scan/Zotero/zotero_harvester_backup/Zotero_harvester' + timestamp + '.conf')
 print("Dateien auf den Server hochladen & Skript auf BENU starten:")
 print("cd /Users/hnebel/Documents")
