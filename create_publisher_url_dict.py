@@ -78,6 +78,8 @@ def get_url_dict(zeder_id: str):
                             issue = month_dict[issue]
                         else:
                             print('not found in dict')
+        else:
+            issue = 'nn'
         pagination = get_subfield(record, '936', 'h')
         if pagination:
             if '-' in pagination:
