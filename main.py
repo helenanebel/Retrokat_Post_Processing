@@ -28,6 +28,12 @@ if __name__ == '__main__':
                 if 'add_jstor_data_from_file' not in conf_dict[zeder_id]:
                     add_jstor_data = input('Bitte geben Sie an, aus welcher Datei Daten übernommen werden sollen: ')
                     conf_dict[zeder_id]['add_jstor_data_from_file'] = add_jstor_data
+                if 'is_jstor' not in conf_dict[zeder_id]:
+                    is_jstor_data = input('Bitte geben Sie an, ob es sich um JSTOR-Daten handelt: ')
+                    conf_dict[zeder_id]['is_jstor'] = is_jstor_data
+                if 'embargo' not in conf_dict[zeder_id]:
+                    embargo = int(input('Bitte geben Sie die Dauer des Embargos an: '))
+                    conf_dict[zeder_id]['embargo'] = embargo
                 with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
                     json.dump(conf_dict, conf_file)
     # if zeder_id + '.json' not in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping'):
@@ -51,7 +57,11 @@ if __name__ == '__main__':
         conf_langs = json.loads(langs)
         detect_review_langs = bool(input('Bitte geben Sie an, ob bei Rezensionen Spracherkennung durchgeführt werden soll: '))
         add_jstor_data = input('Bitte geben Sie an, aus welcher Datei Daten übernommen werden sollen: ')
-        conf_dict[zeder_id] = {'exclude': exclude, 'period': period, 'eppn': eppn, 'lang': default_lang, 'conf_langs': conf_langs, 'detect_review_langs': detect_review_langs, 'add_jstor_data_from_file': add_jstor_data}
+        embargo = int(input('Bitte geben Sie die Dauer des Embargos an: '))
+        conf_dict[zeder_id] = {'exclude': exclude, 'period': period, 'eppn': eppn, 'lang': default_lang, 'conf_langs': conf_langs, 'detect_review_langs': detect_review_langs, 'add_jstor_data_from_file': add_jstor_data, 'embargo': embargo}
+        if 'is_jstor' not in conf_dict[zeder_id]:
+            is_jstor_data = input('Bitte geben Sie an, ob es sich um JSTOR-Daten handelt: ')
+            conf_dict[zeder_id]['is_jstor'] = is_jstor_data
         if input('Wollen Sie diese Konfigurationsangaben speichern (j/n)') == 'j':
             with open('W:/FID-Projekte/Team Retro-Scan/Zotero/conf.json', 'w') as conf_file:
                 json.dump(conf_dict, conf_file)
@@ -65,5 +75,8 @@ if __name__ == '__main__':
     conf_langs = conf_dict[zeder_id]['conf_langs']
     detect_review_langs = conf_dict[zeder_id]['detect_review_langs']
     add_jstor_data = conf_dict[zeder_id]['add_jstor_data_from_file']
-    get_review_information(zeder_id, add_jstor_data)
-    transform(zeder_id, exclude, period, record_nr, default_lang, conf_langs, detect_review_langs, add_jstor_data)
+    is_jstor_data = conf_dict[zeder_id]['is_jstor']
+    embargo = conf_dict[zeder_id]['embargo']
+    if add_jstor_data:
+        get_review_information(zeder_id, add_jstor_data)
+    transform(zeder_id, exclude, period, record_nr, default_lang, conf_langs, detect_review_langs, is_jstor_data, embargo)
