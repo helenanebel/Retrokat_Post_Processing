@@ -47,7 +47,7 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                     print('Fehler! Ungültige Angabe in zotero_update_window!')
                 elif do_harvest == ['000']:
                     continue
-                elif do_harvest == ['111']:
+                elif do_harvest == ['111'] or zid + '_failing_links.json' in os.listdir():
                     get_urls(zid)
                     if zid + '_failing_links.json' not in os.listdir():
                         raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{0}.xml .\n'
@@ -154,14 +154,25 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                         if do_harvest == ['333']:
                             sh_file.write('wait; sleep 15s;\n')
                             waiting_time += 15
-                        if (conf_nr % 400) == 0 and (conf_nr != 0):
-                            if do_harvest == ['333']:
-                                sh_file.write('wait; sleep 16h;\n')
-                                # bei Dialnet ca. 20 min warten nach 15 Artikeln,
-                                # bei MUSE nach ca. 600 Artikeln 20 h warten.
-                                # bei Brill ca. 5 min warten nach 50 Artikeln (Schätzung)
-                                waiting_time += 57600
-                            # sh_file.write('wait; sudo systemctl restart zts;\n')
+                        if do_harvest == ['333']:
+                            if conf_nr != 0:
+                                if "dialnet.unirioja.es" in article_link:
+                                    if conf_nr % 15 == 0:
+                                        sh_file.write('wait; sleep 20m;\n')
+                                        waiting_time += 1200
+                                elif "journals.uchicago.edu" in article_link:
+                                    if conf_nr % 1000 == 0:
+                                        sh_file.write('wait; sleep 1h;\n')
+                                        waiting_time += 3600
+                                elif "muse.jhu.edu" in article_link:
+                                    if conf_nr % 600 == 0:
+                                        sh_file.write('wait; sleep 18h;\n')
+                                        waiting_time += 64800
+                                elif "brill.com/view/journals" in article_link:
+                                    if conf_nr % 50 == 0:
+                                        sh_file.write('wait; sleep 5m;\n')
+                                        waiting_time += 300
+                                # sh_file.write('wait; sudo systemctl restart zts;\n')
                         conf_nr += 1
                     raw_download_command = 'scp -r hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo {0}\n'
                     download_command = raw_download_command.format(zid)
