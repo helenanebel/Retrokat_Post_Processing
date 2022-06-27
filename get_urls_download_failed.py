@@ -15,6 +15,8 @@ def get_urls(zeder_id):
             failing_urls = re.findall(r'\| (.+?) \{.+} download failed!', text, re.IGNORECASE)
             failing_item_urls = re.findall(r'Converting item \d+ .+? \| (.+?) .+?\n.+? --> Skipping record with URL .+? because it is an undesired item type', text, re.IGNORECASE)
             failing_urls += failing_item_urls
+            aborted_urls = re.findall(r'DIRECT @ ([^\s]+)\n.+\n.+\n', text, re.IGNORECASE)
+            failing_urls += aborted_urls
         with open(zeder_id + '_failing_links.json', 'w') as file:
             json.dump(failing_urls, file)
 
