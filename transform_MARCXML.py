@@ -675,12 +675,14 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 detected_lang = detect_title(title)
                 if detected_lang in conf_langs:
                     if "[Rezension von: " not in title and "(Book Review)" not in title:
-                        print('language', detected_lang, 'will be set for title', title)
+                        pass
+                        # print('language', detected_lang, 'will be set for title', title)
                     create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
                                                'subfields': {'a': [detected_lang]}})
                 else:
                     if "[Rezension von: " not in title and "(Book Review)" not in title:
-                        print("no language:", title)
+                        pass
+                        # print("no language:", title)
                     if default_lang != "":
                         create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
                                                    'subfields': {'a': [default_lang]}})
@@ -717,7 +719,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                     else:
                         create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
                                                        'subfields': {'a': languages_dict[jstor_dict[url]].split('; ')}})
-                        print('added jstor languages:', url, languages_dict[jstor_dict[url]])
+                        # print('added jstor languages:', url, languages_dict[jstor_dict[url]])
             check_abstract(record)
             journal_link_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="773"]'
                                             '/{http://www.loc.gov/MARC21/slim}subfield[@code="t"]')
@@ -780,7 +782,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
         statistics_file.write('discarded:' + str(discarded_nr + discarded_by_volume_nr) + '\n')
         statistics_file.write('discarded by volume:' + str(discarded_by_volume_nr) + '\n')
         statistics_file.write('duplicate records in result:' + str(deduplicate_nr) + '\n')
-        statistics_file.write('volumes discarded:' + str(volumes_discarded) + '\n')
+        statistics_file.write('volumes discarded:' + str(sorted(volumes_discarded)) + '\n')
         statistics_file.write('total jstor fails:' + str(total_jstor_fails) + '\n')
         statistics_file.write('total jstor links:' + str(total_jstor_links) + '\n')
         statistics_file.write('review links created:' + str(review_links_created) + '\n')
@@ -796,7 +798,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
         print('discarded:', discarded_nr + discarded_by_volume_nr)
         print('discarded by volume:', discarded_by_volume_nr)
         print('duplicate records in result:', deduplicate_nr)
-        print('volumes discarded:', volumes_discarded)
+        print('volumes discarded:', sorted(volumes_discarded))
         print('total jstor fails:', total_jstor_fails)
         print('total jstor links:', total_jstor_links)
         print('review links created:', review_links_created)
