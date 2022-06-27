@@ -11,7 +11,7 @@ def merge_journal_records():
     zeder_id = zeder_id.replace('+', '\\+')
     record_nr = 0
     for file in os.listdir('multiple_crawl'):
-        if re.findall('^' + zeder_id + '_', file) or zeder_id + '+' in file or file == zeder_id + '.xml':
+        if re.findall('^' + zeder_id + '_', file) or file == zeder_id + '.xml':
             try:
                 print(file)
                 tree = ElementTree.parse('multiple_crawl/' + file)
