@@ -21,5 +21,6 @@ def get_review_information(zeder_id, jstor_zeder_id):
                         if url.text not in review_dict:
                             review_dict[url.text] = []
                         review_dict[url.text].append(tag.text)
-        with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping/' + zeder_id + '_reviews.json', 'w') as json_file:
-            json.dump(review_dict, json_file)
+        if len(review_dict) != 0:
+            with open('W:/FID-Projekte/Team Retro-Scan/Zotero/jstor_mapping/' + zeder_id + '_reviews.json', 'w') as json_file:
+                json.dump(review_dict, json_file)
