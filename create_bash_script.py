@@ -16,6 +16,7 @@ download_command_file = open('C:/Users/hnebel/Documents/download_commands_' + ti
 check_success_file = open('C:/Users/hnebel/Documents/check_success_' + timestamp + '.txt', 'w')
 raw_check_success_command = 'cat {0}_*.out | egrep -c "Skipped \(undesired item type\): [^0]"\ncat {0}_*.out | egrep -c "Unsuccessful: [^0]"\ncat {0}_*.out | egrep -c "Unsuccessful *: [^0]"\ncat {0}_*.out | grep -c \'unable to normalize language: "*\'\ncat {0}_*.out | grep -c "couldn\'t convert record"\ncat {0}_*.out | grep -c "Aborted (core dumped)"\ncat {0}_*.out | egrep -c "Skipped \(exclusion filter\): [^0]"\nfind . \( \( -name "{0}_*.out" \) -prune -a \( -size -4100c \) -prune \) -a -print\n\nfind . -name "{0}_*.out" -exec grep -H "Aborted (core dumped)" {{}} \;\n\nfind . -name "{0}_*.out" -exec egrep -H "Skipped \(exclusion filter\): [^0]" {{}} \;\n\nfind . -name "{0}_*.out" -exec egrep -H "Skipped \(undesired item type\): [^0]" {{}} \;\n\nfind . -name "{0}_*.out" -exec egrep -H "Unsuccessful: [^0]" {{}} \;\n\nfind . -name "{0}_*.out" -exec egrep -H "Unsuccessful *: [^0]" {{}} \;\n\nfind . -name "{0}_*.out" -exec grep -H \'unable to normalize language: "*\' {{}} \;\n\nfind . -name "{0}_*.out" -exec grep -H "couldn\'t convert record" {{}} \;\n\n\n'
 total_journal_number = 0
+total_muse_nr = 0
 is_vr = False
 with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as sh_file:
     sh_file.write('# !/bin/bash\n')
@@ -41,14 +42,15 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
             if re.findall(r'zotero_url\s*=\s*.+(.+cambridge\.org/core/.*).*\n', line):
                 cambridge_url = re.findall(r'zotero_url\s*=\s*(.+cambridge\.org/core/.*)\n', line)[0]
             if re.findall(r'zotero_update_window\s*=\s*(\d+)\n', line):
+                get_urls(zid)
                 do_harvest = re.findall(r'zotero_update_window\s*=\s*(\d+)\n', line)
                 # print(do_harvest)
                 if do_harvest not in [['000'], ['111'], ['222'], ['333']]:
                     print('Fehler! Ungültige Angabe in zotero_update_window!')
                 elif do_harvest == ['000']:
                     continue
+
                 elif do_harvest == ['111'] or zid + '_failing_links.json' in os.listdir():
-                    get_urls(zid)
                     if zid + '_failing_links.json' not in os.listdir():
                         raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{0}.xml .\n'
                         download_command = raw_download_command.format(zid)
@@ -95,7 +97,7 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                             muse_conf = muse_conf.replace('\n\n', '\n')
                             muse_conf = muse_conf.replace(title, journal_title + '_' + str(vr_nr))
                             title = journal_title + '_' + str(vr_nr)
-                            print(title)
+                            # print(title)
                             vr_file.write(muse_conf + '\n')
                             harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(vr_nr), title)
                             sh_file.write('wait;' + harvesting_command)
@@ -152,8 +154,8 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                         harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(vr_nr), title)
                         sh_file.write('wait;' + harvesting_command)
                         if do_harvest == ['333']:
-                            sh_file.write('wait; sleep 5s;\n')
-                            waiting_time += 5
+                            sh_file.write('wait; sleep 12s;\n')
+                            waiting_time += 12
                         if do_harvest == ['333']:
                             if conf_nr != 0:
                                 if "dialnet.unirioja.es" in article_link:
@@ -165,9 +167,10 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                                         sh_file.write('wait; sleep 20m;\n')
                                         waiting_time += 1200
                                 elif "muse.jhu.edu" in article_link:
-                                    if conf_nr % 600 == 0:
-                                        sh_file.write('wait; sleep 18h;\n')
-                                        waiting_time += 64800
+                                    total_muse_nr += 1
+                                    if total_muse_nr % 400 == 0:
+                                        sh_file.write('wait; sleep 10h;\n')
+                                        waiting_time += 36000
                                 elif "brill.com/view/journals" in article_link:
                                     if conf_nr % 50 == 0:
                                         sh_file.write('wait; sleep 5m;\n')
