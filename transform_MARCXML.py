@@ -243,8 +243,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
     post_process_root = post_process_tree.getroot()
     proper_tree = ElementTree.parse('marcxml_empty.xml')
     proper_root = proper_tree.getroot()
-    deduplicate_tree = ElementTree.parse('marcxml_empty.xml')
-    deduplicate_root = deduplicate_tree.getroot()
     for file in os.listdir('volume_files'):
         ElementTree.register_namespace('', "http://www.loc.gov/MARC21/slim")
         result_tree = ElementTree.parse('volume_files/' + file)
@@ -263,13 +261,13 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 if doi in dois:
                     discarded_nr += 1
                     deduplicate_nr += 1
-                    deduplicate_root.append(record)
+                    # print("deduplicated:", doi)
                     continue
             if url in urls:
                 if url != "https://www.no_url.com" and url:
                     discarded_nr += 1
                     deduplicate_nr += 1
-                    deduplicate_root.append(record)
+                    # print("deduplicated:", url)
                     continue
             urls.append(url)
             # Special treatment for Harrassowitz-journals published on JSTOR
@@ -486,12 +484,12 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                     if datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text \
                             not in ['mteo', 'zota', 'nbrk', 'erco', 'ixzs', 'ixrk', 'NABZ']:
                         print('deleted retrieve sign', datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
-                    record.remove(datafield)
+                    if datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text not in ['NABZ', 'mteo']:
+                        record.remove(datafield)
             for retrieve_sign in ['ixzs', 'ixrk', 'zota']:
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ', 
                                            'subfields': {'a': [retrieve_sign], '2': ['LOK']}})
-            create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
-                                       'subfields': {'a': ['mteo']}})
+
             if '$$' in title:
                 # print(title)
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
@@ -734,6 +732,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                     create_marc_field(record, {'tag': '866', 'ind1': ' ', 'ind2': ' ',
                                                'subfields': {'x': ['JSTOR#' + jstor_dict[url]], '2': ['LOK']}})
                 else:
+                    print(url)
                     total_jstor_fails += 1
             if append_to_postprocess:
                 post_process_root.append(record)
@@ -752,8 +751,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
     proper_tree.write(zeder_id + '_proper.xml', encoding='utf-8', xml_declaration=True)
     if post_process_nr > 0:
         post_process_tree.write(zeder_id + '_post_process.xml', encoding='utf-8', xml_declaration=True)
-    if deduplicate_nr > 0:
-        deduplicate_tree.write(zeder_id + '_deduplicated.xml', encoding='utf-8', xml_declaration=True)
     with open('statistics_' + zeder_id + '.txt', 'w', encoding='utf-8') as statistics_file:
         if zeder_id in present_record_list:
             if len(present_record_list[zeder_id]) > 10:
