@@ -2,10 +2,14 @@ import os
 from shutil import copy2
 from time import strftime
 import json
+import xml.etree.ElementTree as ElementTree
+from termcolor import colored
+
 
 move_to_scp_server = ''
 commands = ''
 timestamp = strftime('%y%m%d')
+total_record_number = 0
 file_nr = 0
 file_nr_for_filename = 1
 with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/files_renamed.json', 'r') as renamed_files_file:
@@ -13,6 +17,14 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/files_rename
     file_nr_for_filename += len([renamed_files[filename] for filename in renamed_files if timestamp + '_' in renamed_files[filename]])
     for file in os.listdir('proper_files'):
         if file not in renamed_files:
+            ElementTree.register_namespace('', "http://www.loc.gov/MARC21/slim")
+            result_tree = ElementTree.parse('final_files/' + file)
+            result_root = result_tree.getroot()
+            records = result_root.findall('.//{http://www.loc.gov/MARC21/slim}record')
+            total_record_number += len(records)
+            if total_record_number > 20000:
+                print(colored('total record number exceeds maximum capazity of ftp-server.', 'red'))
+                continue
             file_nr_for_filename += 1
             file_nr += 1
             new_filename_for_ftp = 'ixtheo_zotero_' + timestamp + '_' + str(file_nr_for_filename).zfill(3) + '.xml'
