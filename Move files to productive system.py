@@ -28,10 +28,6 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_ProduktivDB/files_r
             if total_record_number > 20000:
                 print(colored('total record number exceeds maximum capazity of ftp-server.', 'red'))
                 continue
-            paginations = ['-']
-            reviews = 0
-            current_issue = 'first'
-            records = [record for record in records]
             file_nr_for_filename += 1
             file_nr += 1
             new_filename_for_ftp = 'ixtheo_zotero_' + timestamp + '_' + str(file_nr_for_filename).zfill(3) + '.xml'
