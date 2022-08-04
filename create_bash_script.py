@@ -154,8 +154,8 @@ with open('C:/Users/hnebel/Documents/start_harvests.sh', 'w', newline='\n') as s
                         harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(vr_nr), title)
                         sh_file.write('wait;' + harvesting_command)
                         if do_harvest == ['333']:
-                            sh_file.write('wait; sleep 12s;\n')
-                            waiting_time += 12
+                            sh_file.write('wait; sleep 4s;\n')
+                            waiting_time += 4
                         if do_harvest == ['333']:
                             if conf_nr != 0:
                                 if "dialnet.unirioja.es" in article_link:
