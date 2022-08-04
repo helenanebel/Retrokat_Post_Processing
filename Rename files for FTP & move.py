@@ -18,7 +18,7 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/files_rename
     for file in os.listdir('proper_files'):
         if file not in renamed_files:
             ElementTree.register_namespace('', "http://www.loc.gov/MARC21/slim")
-            result_tree = ElementTree.parse('final_files/' + file)
+            result_tree = ElementTree.parse('proper_files/' + file)
             result_root = result_tree.getroot()
             records = result_root.findall('.//{http://www.loc.gov/MARC21/slim}record')
             total_record_number += len(records)
