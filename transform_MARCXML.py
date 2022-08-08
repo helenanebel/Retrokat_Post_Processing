@@ -9,7 +9,9 @@ from bs4 import BeautifulSoup
 import urllib.request
 from language_detection import detect_title
 from datetime import datetime
+from get_k10plus_credentials import get_credentials
 
+username, password = get_credentials()
 month_dict = {'January': '1', 'February': '2', 'March': '3', 'April': '4', 'May': '5',
               'June': '6', 'July': '7', 'August': '8', 'September': '9', 'October': '10',
               'November': '11', 'December': '12',
@@ -261,7 +263,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 if doi in dois:
                     discarded_nr += 1
                     deduplicate_nr += 1
-                    # print("deduplicated:", doi)
                     continue
             if url in urls:
                 if url != "https://www.no_url.com" and url:
@@ -763,7 +764,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
         if missing_volumes:
             input('Zur Kenntnisnahme: Die Bände ' + str(missing_volumes) + ' fehlen')
             statistics_file.write('Zur Kenntnisnahme: Die Bände ' + str(missing_volumes) + ' fehlen' + '\n')
-        url = 'https://sru.bsz-bw.de/cbsx?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml&x-username=s2304&x-password=3i1Q'.format(source_ppn)
+        url = 'https://sru.bsz-bw.de/cbsx?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml&x-username={1}&x-password={2}'.format(source_ppn, username, password)
         print(url)
         xml_data = urllib.request.urlopen(url)
         xml_soup = BeautifulSoup(xml_data, features='lxml')
