@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import json
 import csv
 from time import strftime
+from get_k10plus_credentials import get_credentials
 
 review_ppns_ixtheo_print = []
 review_ppns_ixtheo_online = []
@@ -12,6 +13,7 @@ reviewed_ppns_print = {}
 reviewed_ppns_online = {}
 prio_ppns_print = []
 prio_ppns_online = []
+username, password = get_credentials()
 
 # findet die PPN der Rezension
 def get_results(xml_soup, journal_ppn, ppn):
@@ -36,7 +38,7 @@ def get_results(xml_soup, journal_ppn, ppn):
 
 
 def search_review(ppn, journal_ppn):
-    url = 'https://sru.bsz-bw.de/cbsx?version=1.1&operation=searchRetrieve&query=pica.1049%3D{0}+and+pica.1045%3Drel-tt+and+pica.1001%3Db&maximumRecords=10&recordSchema=picaxml&x-username=s2304&x-password=3i1Q'.format(ppn)
+    url = 'https://sru.bsz-bw.de/cbsx?version=1.1&operation=searchRetrieve&query=pica.1049%3D{0}+and+pica.1045%3Drel-tt+and+pica.1001%3Db&maximumRecords=10&recordSchema=picaxml&x-username={1}&x-password={2}'.format(ppn, username, password)
     xml_data = urllib.request.urlopen(url)
     xml_soup = BeautifulSoup(xml_data, features='lxml')
     review_ppn = get_results(xml_soup, journal_ppn, ppn)
@@ -67,7 +69,7 @@ def get_ppns_for_reciprocal_links(zeder_id, journal_ppn):
                 if review_ppn is not None:
                     ixtheo = False
                     review_ppn_list[ppn] = review_ppn
-                    url = 'https://sru.bsz-bw.de/cbsx?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml&x-username=s2304&x-password=3i1Q'.format(ppn)
+                    url = 'https://sru.bsz-bw.de/cbsx?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml&x-username={1}&x-password={2}'.format(ppn, username, password)
                     xml_data = urllib.request.urlopen(url)
                     xml_soup = BeautifulSoup(xml_data, features='lxml')
                     record = xml_soup.find('record')
