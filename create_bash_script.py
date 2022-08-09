@@ -48,9 +48,8 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                 # print(do_harvest)
                 if do_harvest not in [['000'], ['111'], ['222'], ['333']]:
                     print('Fehler! Ungültige Angabe in zotero_update_window!')
-                elif do_harvest == ['000']:
+                elif do_harvest == ['000'] and zid + '_failing_links.json' not in os.listdir():
                     continue
-
                 elif do_harvest == ['111'] or zid + '_failing_links.json' in os.listdir():
                     if zid + '_failing_links.json' not in os.listdir():
                         raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{0}.xml .\n'
