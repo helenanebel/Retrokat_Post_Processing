@@ -759,7 +759,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
             elif len(present_record_list[zeder_id]) > 0:
                 input('Die folgenden Dubletten wurden nicht erkannt: ' + str(present_record_list[zeder_id]))
             statistics_file.write('missing doublets:' + str(present_record_list[zeder_id]) + '\n')
-        missing_volumes = [volume for volume in volume_list if volume not in found_volume_list]
+        missing_volumes = sorted(list(set([volume for volume in volume_list if volume not in found_volume_list])))
         if missing_volumes:
             input('Zur Kenntnisnahme: Die Bände ' + str(missing_volumes) + ' fehlen')
             statistics_file.write('Zur Kenntnisnahme: Die Bände ' + str(missing_volumes) + ' fehlen' + '\n')
