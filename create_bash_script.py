@@ -54,6 +54,8 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                     if zid + '_failing_links.json' not in os.listdir():
                         raw_download_command = 'scp hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo/{0}.xml .\n'
                         download_command = raw_download_command.format(zid)
+                        download_command_file.write('W:')
+                        download_command_file.write('cd FID-Projekte/Team Retro-Scan/Zotero/results/')
                         download_command_file.write(download_command)
                         raw_harvesting_command = '/usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={0}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/zotero_harvester.conf" "JOURNAL" "{1}" > "{0}.out" 2>&1;\n'
                         harvesting_command = raw_harvesting_command.format(zid, title)
@@ -110,6 +112,8 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                             waiting_time += 10
                         raw_download_command = 'scp -r hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo {0}\n'
                         download_command = raw_download_command.format(zid)
+                        download_command_file.write('W:')
+                        download_command_file.write('cd FID-Projekte/Team Retro-Scan/Zotero/results/')
                         download_command_file.write(download_command)
                         check_success_command = raw_check_success_command.format(zid)
                         check_success_file.write(check_success_command)
@@ -178,6 +182,8 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                         conf_nr += 1
                     raw_download_command = 'scp -r hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo {0}\n'
                     download_command = raw_download_command.format(zid)
+                    download_command_file.write('W:')
+                    download_command_file.write('cd FID-Projekte/Team Retro-Scan/Zotero/results/')
                     download_command_file.write(download_command)
                     check_success_command = raw_check_success_command.format(zid)
                     check_success_file.write(check_success_command)
