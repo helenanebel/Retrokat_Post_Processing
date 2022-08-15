@@ -32,7 +32,7 @@ def get_fields(record, tag):
 
 
 def get_url_dict(zeder_id: str):
-    result_tree = ElementTree.parse('result_files/' + zeder_id + '.xml')
+    result_tree = ElementTree.parse('W:/FID-Projekte/Team Retro-Scan/Zotero/result_files/' + zeder_id + '.xml')
     result_root = result_tree.getroot()
     records = result_root.findall('.//{http://www.loc.gov/MARC21/slim}record')
     publisher_url_dict = {}
