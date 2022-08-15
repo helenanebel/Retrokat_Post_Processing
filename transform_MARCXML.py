@@ -63,6 +63,11 @@ def check_abstract(record):
             for abstract_tag in abstract_tags:
                 # print('deleted abstract-tag')
                 record.remove(abstract_tag)
+        if re.search(r'^No\s+Abstract', abstract_tag.text, re.IGNORECASE):
+            abstract_tags = get_fields(record, '520')
+            for abstract_tag in abstract_tags:
+                # print('deleted abstract-tag')
+                record.remove(abstract_tag)
         elif 60 < len(abstract_tag.text) < 150:
             pass
             # print("Short abstract:", abstract_tag.text)
@@ -117,11 +122,11 @@ def check_and_split_in_issues(zeder_id, conf_available):
     record_nr = 0
     for file in os.listdir('volume_files'):
         os.unlink('volume_files/' + file)
-    for file in os.listdir('result_files'):
+    for file in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/result_files'):
         if file == zeder_id + '.xml':
             all_issues = []
             ElementTree.register_namespace('', "http://www.loc.gov/MARC21/slim")
-            result_tree = ElementTree.parse('result_files/' + file)
+            result_tree = ElementTree.parse('W:/FID-Projekte/Team Retro-Scan/Zotero/result_files/' + file)
             result_root = result_tree.getroot()
             records = result_root.findall('.//{http://www.loc.gov/MARC21/slim}record')
             paginations = ['-']
