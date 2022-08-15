@@ -1,6 +1,7 @@
 import os
 import xml.etree.ElementTree as ElementTree
 import re
+from shutil import copy2
 
 
 def merge_journal_records():
@@ -10,11 +11,11 @@ def merge_journal_records():
     zeder_id = input('Bitte geben Sie die ZEDER-ID der zusammenzuführenden Records ein: ')
     zeder_id_for_regex = zeder_id.replace('+', '\\+')
     record_nr = 0
-    if zeder_id in os.listdir('C:/Users/hnebel'):
-        for file in os.listdir('C:/Users/hnebel/' + zeder_id):
+    if zeder_id in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/results'):
+        for file in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/results/' + zeder_id):
             if re.findall('^' + zeder_id_for_regex + '_', file) or file == zeder_id + '.xml':
                 try:
-                    tree = ElementTree.parse('C:/Users/hnebel/' + zeder_id + '/' + file)
+                    tree = ElementTree.parse('W:/FID-Projekte/Team Retro-Scan/Zotero/results/' + zeder_id + '/' + file)
                     root = tree.getroot()
                     records = root.findall('.//{http://www.loc.gov/MARC21/slim}record')
                     records = [record for record in records]
@@ -25,8 +26,11 @@ def merge_journal_records():
                         complete_root.append(record)
                 except:
                     print('no xml:', file)
+        complete_tree.write('W:/FID-Projekte/Team Retro-Scan/Zotero/result_files/' + zeder_id + '.xml',
+                            encoding='utf-8', xml_declaration=True)
+    elif zeder_id + '.xml' in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/results'):
+        copy2('W:/FID-Projekte/Team Retro-Scan/Zotero/results/' + zeder_id + '.xml', 'W:/FID-Projekte/Team Retro-Scan/Zotero/result_files/' + zeder_id + '.xml')
     print("total records:", record_nr)
-    complete_tree.write('result_files/' + zeder_id + '.xml', encoding='utf-8', xml_declaration=True)
 
 
 if __name__ == '__main__':
