@@ -8,7 +8,7 @@ from create_publisher_url_dict import get_url_dict
 
 # Funktion, um die Inhalte zweier Issue-Dictionaries zu matchen.
 def match_issue_dicts(jstor_mapping_dict, publisher_issue_dict, jstor_issue_dict, total_nr, total_matches):
-    print(total_matches)
+    # print(total_matches)
     for pagination in publisher_issue_dict:
         if pagination in jstor_issue_dict:
             # prüfen, ob nur ein Artikel mit dieser Seitennummerierung erschienen ist
@@ -44,10 +44,10 @@ def match_issue_dicts(jstor_mapping_dict, publisher_issue_dict, jstor_issue_dict
                         # prüfen, ob die Anzahl der Artikel mit der selben Seitenzahl übereinstimmt
                         if len([name for name in names_list if name in publisher_names_list]) >= 2:
                             if len(author_publication_list_jstor) != len(author_publication_list_publisher):
-                                print('_______________________________')
+                                '''print('_______________________________')
                                 print('different list length')
                                 print(author_publication_list_publisher, author_publication_list_jstor)
-                                print('_______________________________')
+                                print('_______________________________')'''
                                 # Probleme bei:
                                 # Review by: John Habgood
                                 # http://www.jstor.org/stable/23959547
@@ -123,10 +123,10 @@ def match_issue_dicts(jstor_mapping_dict, publisher_issue_dict, jstor_issue_dict
                                             name in publisher_names_list]) >= 2:
                                         if len(author_publication_list_jstor) != len(
                                                 author_publication_list_publisher):
-                                            print('_______________________________')
+                                            '''print('_______________________________')
                                             print('different list length')
                                             print(author_publication_list_publisher, author_publication_list_jstor)
-                                            print('_______________________________')
+                                            print('_______________________________')'''
                                             # Probleme bei:
                                             # Review by: John Habgood
                                             # http://www.jstor.org/stable/23959547
@@ -147,13 +147,13 @@ def match_issue_dicts(jstor_mapping_dict, publisher_issue_dict, jstor_issue_dict
 
                     print(exc_type, fname, exc_tb.tb_lineno)
             if not pagination_found:
-                print('_______________________________')
+                '''print('_______________________________')
                 print('pagination not found')
                 print(pagination, publisher_issue_dict[pagination])
                 print(jstor_issue_dict)
-                print('_______________________________')
+                print('_______________________________')'''
                 pass
-    print(total_matches)
+    # print(total_matches)
     return total_nr, total_matches
 
 
@@ -177,10 +177,11 @@ def get_jstor_links(zeder_id: str):
                 # über Jahrgänge in den Jahren iterieren
                 for volume in publisher_dict[year]:
                     if volume not in jstor_dict[year]:
-                        print('________________')
+                        '''print('________________')
                         print('volume', volume, 'not found in', year)
                         print(jstor_dict[year])
-                        print('________________')
+                        print('________________')'''
+                        pass
                     else:
                         # über Issues in den Jahrgängen iterieren
                         for issue in publisher_dict[year][volume]:
