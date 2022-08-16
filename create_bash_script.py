@@ -174,8 +174,11 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                                     if total_muse_nr % 400 == 0:
                                         sh_file.write('wait; sleep 10h;\n')
                                         waiting_time += 36000
-                                elif "brill.com/view/journals" in article_link:
-                                    if conf_nr % 50 == 0:
+                                elif "brill.com/" in article_link:
+                                    if conf_nr % 400 == 0:
+                                        sh_file.write('wait; sleep 30m;\n')
+                                        waiting_time += 1800
+                                    elif conf_nr % 100 == 0:
                                         sh_file.write('wait; sleep 5m;\n')
                                         waiting_time += 300
                                 # sh_file.write('wait; sudo systemctl restart zts;\n')
