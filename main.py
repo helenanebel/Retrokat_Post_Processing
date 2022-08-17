@@ -22,9 +22,6 @@ if __name__ == '__main__':
                     langs = input('Bitte geben Sie die zulässigen Sprachen ein: ')
                     lang_dict = json.loads(langs)
                     conf_dict[zeder_id]['conf_langs'] = lang_dict
-                if 'detect_review_langs' not in conf_dict[zeder_id]:
-                    detect_review_langs = bool(input('Bitte geben Sie an, ob bei Rezensionen Spracherkennung durchgeführt werden soll: '))
-                    conf_dict[zeder_id]['detect_review_langs'] = detect_review_langs
                 if 'add_jstor_data_from_file' not in conf_dict[zeder_id]:
                     add_jstor_data = input('Bitte geben Sie an, aus welcher Datei Daten übernommen werden sollen: ')
                     conf_dict[zeder_id]['add_jstor_data_from_file'] = add_jstor_data
@@ -55,10 +52,9 @@ if __name__ == '__main__':
         default_lang = input('Bitte geben Sie die Default-Sprache ein: ')
         langs = input('Bitte geben Sie die zulässigen Sprachen ein: ')
         conf_langs = json.loads(langs)
-        detect_review_langs = bool(input('Bitte geben Sie an, ob bei Rezensionen Spracherkennung durchgeführt werden soll: '))
         add_jstor_data = input('Bitte geben Sie an, aus welcher Datei Daten übernommen werden sollen: ')
         embargo = int(input('Bitte geben Sie die Dauer des Embargos an: '))
-        conf_dict[zeder_id] = {'exclude': exclude, 'period': period, 'eppn': eppn, 'lang': default_lang, 'conf_langs': conf_langs, 'detect_review_langs': detect_review_langs, 'add_jstor_data_from_file': add_jstor_data, 'embargo': embargo}
+        conf_dict[zeder_id] = {'exclude': exclude, 'period': period, 'eppn': eppn, 'lang': default_lang, 'conf_langs': conf_langs, 'add_jstor_data_from_file': add_jstor_data, 'embargo': embargo}
         if 'is_jstor' not in conf_dict[zeder_id]:
             is_jstor_data = input('Bitte geben Sie an, ob es sich um JSTOR-Daten handelt: ')
             conf_dict[zeder_id]['is_jstor'] = is_jstor_data
@@ -73,10 +69,9 @@ if __name__ == '__main__':
     exclude = conf_dict[zeder_id]['exclude'] + exclude_everywhere
     default_lang = conf_dict[zeder_id]['lang']
     conf_langs = conf_dict[zeder_id]['conf_langs']
-    detect_review_langs = conf_dict[zeder_id]['detect_review_langs']
     add_jstor_data = conf_dict[zeder_id]['add_jstor_data_from_file']
     is_jstor_data = conf_dict[zeder_id]['is_jstor']
     embargo = conf_dict[zeder_id]['embargo']
     if add_jstor_data:
         get_review_information(zeder_id, add_jstor_data)
-    transform(zeder_id, exclude, period, record_nr, default_lang, conf_langs, detect_review_langs, is_jstor_data, embargo)
+    transform(zeder_id, exclude, period, record_nr, default_lang, conf_langs, is_jstor_data, embargo)

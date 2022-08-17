@@ -189,7 +189,7 @@ def check_and_split_in_issues(zeder_id, conf_available):
     return record_nr
 
 
-def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int], record_nr, default_lang: str, conf_langs: list[str], detect_review_langs: bool, is_jstor_data: str, embargo: int):
+def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int], record_nr, default_lang: str, conf_langs: list[str], is_jstor_data: str, embargo: int):
     responsibles_corrected = {}
     personal_titles = {}
     total_jstor_fails = 0
@@ -710,7 +710,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                                                        'subfields': {'a': ['nbrk'], '2': ['LOK']}})
                 elif "[Rezension von: " in title:
                     language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = default_lang
-            if is_review and not detect_review_langs:
+            if is_review:
                 record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]'))
                 create_marc_field(record, {'tag': '041', 'ind1': ' ', 'ind2': ' ',
                                            'subfields': {'a': [default_lang]}})
