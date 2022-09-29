@@ -22,7 +22,6 @@ def get_results(xml_soup, journal_ppn, ppn):
         for record in xml_soup.find_all('record'):
             if record.find('datafield', tag='002@').find('subfield', code='0').text == 'Osn':
                 found_ppn = record.find('datafield', tag='003@').find('subfield', code='0').text
-                # print(found_ppn)
                 if record.find('datafield', tag='039B'):
                     if record.find('datafield', tag='039B').find('subfield', code='9'):
                         if record.find('datafield', tag='039B').find('subfield', code='9').text == journal_ppn:
