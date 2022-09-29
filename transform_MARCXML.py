@@ -258,6 +258,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
         for record in records:
             discard = False
             append_to_postprocess = False
+            found_urls = get_fields(record, '856')
             url = get_subfield(record, '856', 'u')
             doi = get_subfield(record, '024', 'a')
             year = get_subfield(record, '264', 'c')
@@ -269,12 +270,14 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                     discarded_nr += 1
                     deduplicate_nr += 1
                     continue
-            if url in urls:
-                if url != "https://www.no_url.com" and url:
-                    discarded_nr += 1
-                    deduplicate_nr += 1
-                    # print("deduplicated:", url)
-                    continue
+            for found_url in found_urls:
+                found_url = found_url.find('{http://www.loc.gov/MARC21/slim}subfield[@code="u"]').text
+                if found_url != "https://www.no_url.com" and found_url:
+                    if found_url in urls:
+                        discard = True
+                        deduplicate_nr += 1
+                        print("deduplicated:", found_url)
+                        continue
             urls.append(url)
             # Special treatment for Harrassowitz-journals published on JSTOR
             if zeder_id in ['1548']:
@@ -535,6 +538,13 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                                         if entry['doi'] == doi:
                                             delete_entries.append(entry)
                                             discard = True
+                                    if 'url' in entry:
+                                        all_urls = get_fields(record, '856')
+                                        for url in all_urls:
+                                            url_text = url.find('{http://www.loc.gov/MARC21/slim}subfield[@code="u"]').text
+                                            if entry['url'] == url_text:
+                                                delete_entries.append(entry)
+                                                discard = True
                                     found = re.search(entry['title'], title, re.IGNORECASE)
                                     if found is not None:
                                         delete_entries.append(entry)
