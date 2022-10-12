@@ -4,8 +4,10 @@ import re
 from get_urls_download_failed import get_urls
 from datetime import datetime
 from shutil import copy2
+import urllib.request
+from bs4 import BeautifulSoup
 
-with open('zotero_harvester_header.conf', 'r') as zotero_harvester_header_file:
+with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/zotero_harvester_header.conf', 'r') as zotero_harvester_header_file:
     zotero_harvester_header = zotero_harvester_header_file.read()
 
 upload_files = []
@@ -46,7 +48,7 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                 get_urls(zid)
                 do_harvest = re.findall(r'zotero_update_window\s*=\s*(\d+)\n', line)
                 # print(do_harvest)
-                if do_harvest not in [['000'], ['111'], ['222'], ['333']]:
+                if do_harvest not in [['000'], ['111'], ['222'], ['333'], ['444']]:
                     print('Fehler! Ungültige Angabe in zotero_update_window!')
                 elif do_harvest == ['000'] and zid + '_failing_links.json' not in os.listdir():
                     continue
@@ -194,6 +196,86 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                     total_journal_number += 1
                     search_id = False
                     print('Wartezeit:', waiting_time/3600)
+                elif do_harvest == ['444']:
+                    issn_to_ppn_file = open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/issn_to_ppn.json', 'r')
+                    issn_to_ppn = json.load(issn_to_ppn_file)
+                    issn_to_ppn_file.close()
+
+                    # vorhandene DOIs hinterlegen, dann jeweils für das aktuelle + das letzte Jahr neue DOIs suchen und diese hinzufügen
+                    # jeweils gegenprüfen
+                    #
+                    conf_nr = 0
+                    vr_nr = 0
+                    vr_file = open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/conf-files/' + zid + '.conf', 'w',
+                                   newline='\n')
+                    sh_file.write('wait;' + 'mkdir ' + zid + '_out;\n')
+                    upload_files.append(zid + '.conf')
+                    vr_file.write(zotero_harvester_header)
+                    article_nr_in_file = 0
+                    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/article_links/' + zid + '.json') as article_link_file:
+                        article_links = json.load(article_link_file)
+                    raw_download_command = 'scp -r hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/{0}/ixtheo {0}\n'
+                    download_command = raw_download_command.format(zid)
+                    download_command_file.write('W:\n')
+                    download_command_file.write('cd FID-Projekte/Team Retro-Scan/Zotero/results/\n')
+                    download_command_file.write(download_command)
+                    check_success_command = raw_check_success_command.format(zid)
+                    check_success_file.write(check_success_command)
+                    raw_harvesting_command = '/usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/hnebel/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" > "{0}_out/{1}.out" 2>&1;\n'
+                    base_conf = '[{0}_{1}]\nzeder_id = 0000\nzeder_modified_time = "2022-02-22 02:22:22"\nonline_ppn = {2}\nonline_issn = {3}\nzotero_type = DIRECT\nzotero_delivery_mode = TEST\nzotero_group = IxTheo\nzotero_url = {4}\nzotero_expected_languages = eng,ger,fre,ita,spa,dut\n# ssgn =\nselective_evaluation = false\nzotero_review_regex = (?i)^(Books?\s+)?Reviews?\nzotero_extraction_regex = \/doi\/\n\n'
+                    conf_string = ""
+
+                    # wegen ssgn nachfragen
+                    # wegen Suche nachfragen
+
+                    all_issns = list(set([article_links[article_url] for article_url in article_links]))
+                    for issn in all_issns:
+                        if issn not in issn_to_ppn:
+                            search_issn = issn[:8]
+                            url = "https://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.iss%3D{0}+AND+pica.bbg%3Dob*&maximumRecords=10&recordSchema=picaxml".format(search_issn)
+                            xml_data = urllib.request.urlopen(url)
+                            xml_soup = BeautifulSoup(xml_data, features='lxml')
+                            if xml_soup.find('zs:numberofrecords').text != '0':
+                                if xml_soup.find('zs:numberofrecords').text == '1':
+                                    for record in xml_soup.find_all('record'):
+                                        ppn = record.find('datafield', tag='003@').find('subfield', code='0').text
+                                        if record.find('datafield', tag='021A'):
+                                            title = record.find('datafield', tag='021A').find('subfield', code='a').text
+                                        if record.find('datafield', tag='011@'):
+                                            appearance = record.find('datafield', tag='011@').find('subfield', code='n').text
+                                        issn_to_ppn[issn] = {'title': title, 'ppn': ppn, 'appearance': appearance, 'issn': search_issn}
+                                else:
+                                    print('found multiple matches:', issn)
+                            else:
+                                print('found no matches:', issn)
+                    for article_url in article_links:
+                        conf_nr += 1
+                        vr_nr += 1
+                        article_doi = re.findall(r'/doi/(.+)$', article_url)
+                        if article_doi:
+                            url = "https://sru.k10plus.de/opac-de-627?version=1.1&operation=searchRetrieve&query=pica.doi%3D{0}&maximumRecords=10&recordSchema=picaxml".format(
+                                article_doi[0].replace('/', '*'))
+                            xml_data = urllib.request.urlopen(url)
+                            xml_soup = BeautifulSoup(xml_data, features='lxml')
+                            if xml_soup.find('zs:numberofrecords').text != '0':
+                                print('found doi', article_doi)
+                                continue
+                        if article_links[article_url] in issn_to_ppn:
+                            journal = issn_to_ppn[article_links[article_url]]
+                            conf = base_conf.format(journal['title'], str(conf_nr), journal['ppn'], journal['issn'], article_url)
+                            conf_string += conf
+                            vr_file.write(conf)
+                            harvesting_command = raw_harvesting_command.format(zid, zid + '_' + str(vr_nr), journal['title'] + '_' + str(vr_nr))
+                            sh_file.write('wait;' + harvesting_command)
+
+                        else:
+                            print('issn', article_links[article_url], 'not found')
+                    print(vr_nr)
+                    vr_file.close()
+                    total_journal_number += 1
+                    search_id = False
+                    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/issn_to_ppn.json', 'w', encoding='utf-8') as issn_to_ppn_file:
+                        json.dump(issn_to_ppn, issn_to_ppn_file)
                 if total_journal_number % 4 == 0:
                     sh_file.write('wait; sudo systemctl restart zts;\nsleep 1m;\n')
                 sh_file.write('wait; sleep 15m;\n')
