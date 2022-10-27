@@ -11,6 +11,7 @@ from language_detection import detect_title
 from datetime import datetime
 from get_k10plus_credentials import get_credentials
 
+
 username, password = get_credentials()
 month_dict = {'January': '1', 'February': '2', 'March': '3', 'April': '4', 'May': '5',
               'June': '6', 'July': '7', 'August': '8', 'September': '9', 'October': '10',
@@ -141,11 +142,13 @@ def check_and_split_in_issues(zeder_id, conf_available):
                     new_issue = str(get_subfield(record, '936', 'd').zfill(3)).replace('/', '-') + \
                                 str(get_subfield(record, '936', 'e').zfill(2)).replace('/', '-')
                 elif get_subfield(record, '936', 'd'):
-                    # print('missing issue-nr: ', get_subfield(record, '856', 'u'))
                     new_issue = str(get_subfield(record, '936', 'd').zfill(3)).replace('/', '-') + '000'
                 else:
-                    print('discarded:', get_subfield(record, '245', 'a'), 'because it is no journal article')
-                    continue
+                    if zeder_id not in ['0001']:
+                        print('discarded:', get_subfield(record, '245', 'a'), 'because it is no journal article')
+                        continue
+                    else:
+                        new_issue = '000000'
                 if new_issue not in all_issues:
                     with open('volume_files/' + current_issue + '.xml', 'w') as xml_file:
                         xml_file.close()
@@ -189,7 +192,7 @@ def check_and_split_in_issues(zeder_id, conf_available):
     return record_nr
 
 
-def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int], record_nr, default_lang: str, conf_langs: list[str], is_jstor_data: str, embargo: int):
+def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int], record_nr, default_lang: str, conf_langs: list[str], is_jstor_data: str, embargo: int, check_for_duplicates: str):
     responsibles_corrected = {}
     personal_titles = {}
     total_jstor_fails = 0
@@ -225,12 +228,18 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zeder_id + '.json', 'r') as missing_link_file:
         records_with_missing_links = json.load(missing_link_file)
         missing_link_lookup_years = [missing_link_record['year'] for missing_link_record in records_with_missing_links]
-    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/present_records.json', 'r') as present_record_file:
-        present_record_list = json.load(present_record_file)
-        if zeder_id in present_record_list:
-            present_record_lookup_years = [present_record['year'] for present_record in present_record_list[zeder_id]]
+    with open('W:/FID-Projekte/Team Retro-Scan/Zotero/present_records.json', 'r', encoding='utf-8') as present_record_file:
+        all_present_records = json.load(present_record_file)
+        recognized_present_record_list = []
+        if zeder_id in all_present_records:
+            present_record_lookup_years = [present_record['year'] for present_record in all_present_records[zeder_id]]
+            present_record_list = all_present_records[zeder_id]
+            for entry in present_record_list:
+                for special_char in ["'", '"', "(", ")", "?"]:
+                    entry['title'] = entry['title'].replace(special_char, '.')
         else:
             present_record_lookup_years = []
+            present_record_list = []
     if zeder_id + '_review_urls.json' in os.listdir('review_links'):
         with open('review_links/' + zeder_id + '_review_urls.json', 'r') as review_link_file:
             review_links = json.load(review_link_file)
@@ -261,6 +270,17 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
             found_urls = get_fields(record, '856')
             url = get_subfield(record, '856', 'u')
             doi = get_subfield(record, '024', 'a')
+            if check_for_duplicates:
+                url = "https://sru.bsz-bw.de/cbsx?version=1.1&operation=searchRetrieve&query=pica.{0}%3D{1}" \
+                      "&maximumRecords=10&recordSchema=picaxml&x-username={2}&x-password={3}"\
+                    .format(check_for_duplicates, doi.replace('/', '*'), username, password)
+                xml_data = urllib.request.urlopen(url)
+                xml_soup = BeautifulSoup(xml_data, features='lxml')
+                if xml_soup.find('zs:numberofrecords').text != '0':
+                    discarded_nr += 1
+                    continue
+                else:
+                    print(doi)
             year = get_subfield(record, '264', 'c')
             if year not in found_volume_list:
                 found_volume_list.append(year)
@@ -278,6 +298,9 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                         deduplicate_nr += 1
                         print("deduplicated:", found_url)
                         continue
+            if url == 'https://www.no_url.com':
+                record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="856"]'))
+                record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="URL"]'))
             urls.append(url)
             # Special treatment for Harrassowitz-journals published on JSTOR
             if zeder_id in ['1548']:
@@ -446,7 +469,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 elif not re.findall(r'\d+', pagination):
                     append_to_postprocess = True
             else:
-                print('no pagination:', url)
+                pass
+                # print('no pagination:', url)
                 #append_to_postprocess = True
             if differences_from_source:
                 source_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]')
@@ -456,9 +480,10 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                     original_source_tag.text = get_subfield(record, '773', 'g')
                 else:
                     print('no subfield 773 $g')
-            source = get_subfield(record, '773', 'g')
             author = get_subfield(record, '100', 'a')
-            source_ppn = get_subfield(record, '773', 'w').replace('(DE-627)', '')
+            source = get_subfield(record, '773', 'g')
+            if get_subfield(record, '773', 'w') is not None:
+                source_ppn = get_subfield(record, '773', 'w').replace('(DE-627)', '')
             # Dubletten im Ergebnis herausfiltern:
             if source in all_sources and zeder_id in ['1157b', '1259++']:
                 previous_title = all_sources[source]['title']
@@ -488,13 +513,15 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 if year not in volumes_discarded:
                     volumes_discarded.append(year)
                 continue
-            for datafield in record.findall('{http://www.loc.gov/MARC21/slim}datafield'):
-                if datafield.attrib['tag'] == '935':
+            for datafield in record.findall('{http://www.loc.gov/MARC21/slim}datafield[@tag="935"]'):
+                if datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]') is not None:
                     if datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text \
-                            not in ['mteo', 'zota', 'nbrk', 'erco', 'ixzs', 'ixrk', 'NABZ']:
-                        print('deleted retrieve sign', datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
-                    if datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text not in ['NABZ', 'mteo']:
+                                    not in ['mteo', 'zota', 'nbrk', 'erco', 'ixzs', 'ixrk', 'NABZ', 'rplv', 'sels']:
+                                print('deleted retrieve sign', datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text)
+                    if datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text not in ['NABZ', 'mteo', 'rplv', 'sels']:
                         record.remove(datafield)
+                    if datafield.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text == 'rplv':
+                        record.find('{http://www.loc.gov/MARC21/slim}leader').text = record.find('{http://www.loc.gov/MARC21/slim}leader').text.replace('00000nab', '00000nam')
             for retrieve_sign in ['ixzs', 'ixrk', 'zota']:
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ', 
                                            'subfields': {'a': [retrieve_sign], '2': ['LOK']}})
@@ -503,10 +530,12 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 # print(title)
                 create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                            'subfields': {'a': ['nbrk'], '2': ['LOK']}})
-            if zeder_id in present_record_list:
+            if present_record_list:
+
                 delete_entries = []
                 if year in present_record_lookup_years:
-                    for entry in [entry for entry in present_record_list[zeder_id] if entry['year'] == year]:
+
+                    for entry in [entry for entry in present_record_list if entry['year'] == year]:
                         if ('volume' in entry) and ('issue' in entry):
                             if (entry['volume'] == volume) and (entry['issue'] == issue):
                                 if entry['title'] == '*all*':
@@ -550,7 +579,9 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                                         delete_entries.append(entry)
                                         discard = True
                     for entry in delete_entries:
-                        present_record_list[zeder_id].remove(entry)
+                        recognized_present_record_list.append(entry)
+                        present_record_list.remove(entry)
+                # print(discard, '\n____________')
             if discard:
                 discarded_nr += 1
                 continue
@@ -563,7 +594,6 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 print('embargo:', title)
                 embargo_url = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="856"]'
                                         '/{http://www.loc.gov/MARC21/slim}subfield[@code="u"]').text
-                record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="856"]'))
                 if record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="856"]') is not None:
                     record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="856"]'))
                 record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="URL"]'))
@@ -737,23 +767,23 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
             check_abstract(record)
             journal_link_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="773"]'
                                             '/{http://www.loc.gov/MARC21/slim}subfield[@code="t"]')
-            journal_link_tag.text = journal_link_tag.text.strip('+')
-            journal_link_tag.text = re.sub(r'(^.+)_\d+$', r'\1', journal_link_tag.text)
-            journal_name_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="JOU"]'
-                                           '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
-            journal_name_tag.text = journal_link_tag.text
+            if journal_link_tag is not None:
+                journal_link_tag.text = journal_link_tag.text.strip('+')
+                journal_link_tag.text = re.sub(r'(^.+)_\d+$', r'\1', journal_link_tag.text)
+                journal_name_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="JOU"]'
+                                               '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
+                journal_name_tag.text = journal_link_tag.text
             if jstor_dict and is_jstor_data == 'false':
                 if url in jstor_dict:
                     total_jstor_links += 1
                     create_marc_field(record, {'tag': '866', 'ind1': ' ', 'ind2': ' ',
-                                               'subfields': {'x': ['JSTOR#' + jstor_dict[url]], '2': ['LOK']}})
+                                               'subfields': {'x': ['#JSTOR#' + jstor_dict[url]], '2': ['LOK']}})
                 else:
                     total_jstor_fails += 1
             if append_to_postprocess:
                 post_process_root.append(record)
                 post_process_nr += 1
             else:
-
                 proper_root.append(record)
                 proper_nr += 1
     if links_to_add_nr > 0:
@@ -767,15 +797,17 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
     if post_process_nr > 0:
         post_process_tree.write(zeder_id + '_post_process.xml', encoding='utf-8', xml_declaration=True)
     with open('statistics_' + zeder_id + '.txt', 'w', encoding='utf-8') as statistics_file:
-        if zeder_id in present_record_list:
-            if len(present_record_list[zeder_id]) > 10:
-                print(str(present_record_list[zeder_id]))
+        if present_record_list:
+            if len(present_record_list) > 10:
+                print(str(present_record_list))
                 input('Zur Kenntnisnahme: Die oben genannten Dubletten wurden nicht erkannt')
-            elif len(present_record_list[zeder_id]) > 0:
-                input('Die folgenden Dubletten wurden nicht erkannt: ' + str(present_record_list[zeder_id]))
-            statistics_file.write('missing doublets:' + str(present_record_list[zeder_id]) + '\n')
+                print('Die folgenden Dubletten wurden erkannt: ' + str(recognized_present_record_list))
+            elif len(present_record_list) > 0:
+                input('Die folgenden Dubletten wurden nicht erkannt: ' + str(present_record_list))
+                print('Die folgenden Dubletten wurden erkannt: ' + str(recognized_present_record_list))
+            statistics_file.write('missing doublets:' + str(present_record_list) + '\n')
         missing_volumes = sorted(list(set([volume for volume in volume_list if volume not in found_volume_list])))
-        if missing_volumes:
+        if volumes_to_catalogue != [1000, 3000] and missing_volumes:
             input('Zur Kenntnisnahme: Die Bände ' + str(missing_volumes) + ' fehlen')
             statistics_file.write('Zur Kenntnisnahme: Die Bände ' + str(missing_volumes) + ' fehlen' + '\n')
         url = 'https://sru.bsz-bw.de/cbsx?version=1.1&operation=searchRetrieve&query=pica.ppn%3D{0}&maximumRecords=10&recordSchema=picaxml&x-username={1}&x-password={2}'.format(source_ppn, username, password)
