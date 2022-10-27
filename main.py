@@ -74,4 +74,7 @@ if __name__ == '__main__':
     embargo = conf_dict[zeder_id]['embargo']
     if add_jstor_data:
         get_review_information(zeder_id, add_jstor_data)
-    transform(zeder_id, exclude, period, record_nr, default_lang, conf_langs, is_jstor_data, embargo)
+    check_for_duplicates = None
+    if 'check_for_duplicates' in conf_dict[zeder_id]:
+        check_for_duplicates = conf_dict[zeder_id]['check_for_duplicates']
+    transform(zeder_id, exclude, period, record_nr, default_lang, conf_langs, is_jstor_data, embargo, check_for_duplicates)
