@@ -36,6 +36,10 @@ def get_urls(zeder_id):
                 failing_urls += unsuccessfull_crawl_attempts
                 unsuccessfull_downloads = re.findall(r'\| (.+?) \{.+?\} download failed!', text, re.IGNORECASE)
                 failing_urls += unsuccessfull_downloads
+                unconverted_records = re.findall(r'\| (.+?) \{.+}(?:\n.+)*couldn\'t convert record:', text, re.IGNORECASE)
+                if unconverted_records:
+                    print('Not converted records:')
+                    print(unconverted_records)
             with open(zeder_id + '_failing_links.json', 'w') as file:
                 failing_urls = list(set(failing_urls))
                 json.dump(failing_urls, file)
