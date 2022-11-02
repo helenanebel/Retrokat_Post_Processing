@@ -777,7 +777,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                 if url in jstor_dict:
                     total_jstor_links += 1
                     create_marc_field(record, {'tag': '866', 'ind1': ' ', 'ind2': ' ',
-                                               'subfields': {'x': ['#JSTOR#' + jstor_dict[url]], '2': ['LOK']}})
+                                               'subfields': {'x': ['JSTOR#' + jstor_dict[url]], '2': ['LOK']}})
                 else:
                     total_jstor_fails += 1
             if append_to_postprocess:
