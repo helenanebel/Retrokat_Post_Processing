@@ -138,7 +138,7 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                     article_nr_in_file = 0
                     with open('W:/FID-Projekte/Team Retro-Scan/Zotero/article_links/' + zid + '.json') as article_link_file:
                         article_links = json.load(article_link_file)
-                    raw_harvesting_command_article_download = '/usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/{2}/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" > "{0}_out/{1}.out" 2>&1;\n'
+                    raw_harvesting_command_article_download = '/usr/local/bin/zotero_harvester "--min-log-level=DEBUG" "--force-downloads" "--output-directory=/home/{3}/{0}" "--output-filename={1}.xml" "--config-overrides=skip_online_first_articles_unconditionally=true" "/usr/local/var/lib/tuelib/zotero-enhancement-maps/' + zid + '.conf' + '" "JOURNAL" "{2}" > "{0}_out/{1}.out" 2>&1;\n'
                     for article_link in article_links:
                         vr_nr += 1
                         # zotero_crawl_url_regex auskommentieren!
