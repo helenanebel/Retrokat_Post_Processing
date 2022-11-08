@@ -92,8 +92,7 @@ def search_publication(title, author, year, place, review_year):
         if pub_dict[key]:
             if pub_dict[key] != 'null':
                 url += 'pica.' + key + '%3D' + pub_dict[key].strip('.') + '+and+'
-    url = url.strip('+and+') + '&maximumRecords=10&recordSchema=picaxml'
-    # print(url)
+    url = url.strip('+and+').replace("\\", "").replace(" ", "") + '&maximumRecords=10&recordSchema=picaxml'
     xml_data = urllib.request.urlopen(url)
     xml_soup = BeautifulSoup(xml_data, features='lxml')
     if not xml_soup.find('zs:numberofrecords'):
