@@ -4,8 +4,9 @@ from time import strftime
 import json
 import xml.etree.ElementTree as ElementTree
 from termcolor import colored
+from get_name import get_name
 
-
+BENU_username = get_name()
 move_to_scp_server = ''
 commands = ''
 timestamp = strftime('%y%m%d')
@@ -37,8 +38,8 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/files_rename
 
 print(str(file_nr), 'files renamed and moved to folder')
 
-print('Commands:')
-print('Dateien auf BENU verschieben & Dateien von BENU auf den FTP-Server legen:\nW:\ncd /FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB'
-      '\nscp ixtheo_zotero_' + timestamp + '_*.xml hnebel@benu.ub.uni-tuebingen.de:/home/hnebel/bsz')
-print('\nssh hnebel@benu.ub.uni-tuebingen.de\ncd /home/hnebel/bsz'
-      + move_to_scp_server)
+commands = 'Dateien auf BENU verschieben & Dateien von BENU auf den FTP-Server legen:' \
+           '\nW:\ncd /FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB' \
+           '\nscp ixtheo_zotero_' + timestamp + '_*.xml {0}@benu.ub.uni-tuebingen.de:/home/{0}/bsz' \
+           '\nssh {0}@benu.ub.uni-tuebingen.de\ncd /home/{0}/bsz' + move_to_scp_server
+print(commands.format(BENU_username))
