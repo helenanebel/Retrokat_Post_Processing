@@ -77,7 +77,7 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                         conf_nr = 0
                         sh_file.write('wait;' + 'mkdir ' + zid + '_out;\n')
                         vr_file = open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/conf-files/' + zid + '.conf', 'w',
-                                       newline='\n')
+                                       newline='\n', encoding="utf-8")
                         upload_files.append(zid + '.conf')
                         vr_file.write(zotero_harvester_header)
                         article_nr_in_file = 0
@@ -131,7 +131,7 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                     vr_nr = 0
                     conf_nr = 0
                     vr_file = open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/conf-files/' + zid + '.conf', 'w',
-                                     newline='\n')
+                                     newline='\n', encoding="utf-8")
                     sh_file.write('wait;' + 'mkdir ' + zid + '_out;\n')
                     upload_files.append(zid + '.conf')
                     vr_file.write(zotero_harvester_header)
@@ -152,7 +152,6 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                         muse_conf = muse_conf.replace(title, journal_title + '_' + str(vr_nr))
                         title = journal_title + '_' + str(vr_nr)
                         try:
-
                             vr_file.write(muse_conf + '\n')
                         except:
                             print(muse_conf)
