@@ -59,6 +59,9 @@ def create_jstor_url_dict(zeder_id: str):
                     jstor_dict[year][volume][issue][pages] = {}
                 if not author:
                     author = 'nn'
+                else:
+                    author_firstname, author_lastname = author.split('; ')[0].rsplit(' ', 1)
+                    author = author_lastname + ', ' + author_firstname
                 if author not in jstor_dict[year][volume][issue][pages]:
                     jstor_dict[year][volume][issue][pages][author] = [row[0]]
                     total_nr +=1
