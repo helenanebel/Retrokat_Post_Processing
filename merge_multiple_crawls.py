@@ -26,7 +26,8 @@ def merge_journal_records():
                         complete_root.append(record)
                 except:
                     print('no xml:', file)
-        complete_tree.write('W:/FID-Projekte/Team Retro-Scan/Zotero/result_files/' + zeder_id + '.xml',
+        if record_nr > 0:
+            complete_tree.write('W:/FID-Projekte/Team Retro-Scan/Zotero/result_files/' + zeder_id + '.xml',
                             encoding='utf-8', xml_declaration=True)
     elif zeder_id + '.xml' in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/results'):
         copy2('W:/FID-Projekte/Team Retro-Scan/Zotero/results/' + zeder_id + '.xml', 'W:/FID-Projekte/Team Retro-Scan/Zotero/result_files/' + zeder_id + '.xml')
