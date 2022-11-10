@@ -237,6 +237,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
             for entry in present_record_list:
                 for special_char in ["'", '"', "(", ")", "?"]:
                     entry['title'] = entry['title'].replace(special_char, '.')
+                entry['title'] = re.sub(r'[^\x00-\x7F]', '.', entry['title'])
         else:
             present_record_lookup_years = []
             present_record_list = []
