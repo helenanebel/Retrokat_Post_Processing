@@ -267,7 +267,6 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                             vr_file.write(conf)
                             harvesting_command = raw_harvesting_command_444.format(zid, zid + '_' + str(vr_nr), journal['title'] + '_' + str(vr_nr), BENU_username)
                             sh_file.write('wait;' + harvesting_command)
-
                         else:
                             print('issn', article_links[article_url], 'not found')
                     print(vr_nr)
@@ -293,6 +292,6 @@ upload_string = ""
 for file in upload_files:
     upload_string += "\nscp conf-files/{0} {1}@benu.ub.uni-tuebingen.de:/usr/local/zotero-enhancement-maps/{1}_retrokat/zotero-enhancement-maps/{0}".format(file, BENU_username)
 print("scp start_harvests.sh {0}@benu.ub.uni-tuebingen.de:/home/{0}"
-      "\nscp zotero_harvester.conf {0}@benu.ub.uni-tuebingen.de:/usr/local/zotero-enhancement-maps/hnebel_retrokat/zotero-enhancement-maps/zotero_harvester.conf".format(BENU_username)
+      "\nscp zotero_harvester.conf {0}@benu.ub.uni-tuebingen.de:/usr/local/zotero-enhancement-maps/{0}_retrokat/zotero-enhancement-maps/zotero_harvester.conf".format(BENU_username)
       + upload_string +
       "\nssh {0}@benu.ub.uni-tuebingen.de\nnohup ./start_harvests.sh &".format(BENU_username))
