@@ -45,6 +45,6 @@ print(total_record_number, 'records moved to folder')
 
 commands = 'Dateien auf BENU verschieben & von BENU auf den FTP-Server legen:' \
            '\nW:\ncd /FID-Projekte/Team Retro-Scan/Zotero/Einspielen_ProduktivDB' \
-           'nscp ixtheo_zotero_' + timestamp + '_*.xml {0}@benu.ub.uni-tuebingen.de:/home/{0}/bsz' \
+           '\nscp ixtheo_zotero_' + timestamp + '_*.xml {0}@benu.ub.uni-tuebingen.de:/home/{0}/bsz' \
            '\n\nssh {0}@benu.ub.uni-tuebingen.de\ncd /home/{0}/bsz' + move_to_scp_server
 print(commands.format(BENU_username))
