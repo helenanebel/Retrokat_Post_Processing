@@ -24,6 +24,8 @@ def get_results(xml_soup, journal_ppn, ppn):
                 found_ppn = record.find('datafield', tag='003@').find('subfield', code='0').text
                 if record.find('datafield', tag='039B'):
                     if record.find('datafield', tag='039B').find('subfield', code='9'):
+                        if record.find('datafield', tag='039B').find('subfield', code='9').text != journal_ppn and len(xml_soup.find_all('record')) == 1:
+                            raise ValueError('Die übergeordnete PPN in der Konfigurationsdatei entspricht nicht der ü.g. Aufnahme der gefundenen PPN ' + record.find('datafield', tag='039B').find('subfield', code='9').text)
                         if record.find('datafield', tag='039B').find('subfield', code='9').text == journal_ppn:
                             reviewed_works_a = [datafield.find('subfield', code='9').text for datafield in record.find_all('datafield', tag='039P')]
                             reviewed_works_b = [datafield.find('subfield', code='9').text for datafield in record.find_all('datafield', tag='039U')]
