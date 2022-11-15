@@ -17,7 +17,7 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/files_rename
     renamed_files = json.load(renamed_files_file)
     file_nr_for_filename += len([renamed_files[filename] for filename in renamed_files if timestamp + '_' in renamed_files[filename]])
     for file in os.listdir('W:/FID-Projekte/Team Retro-Scan/Zotero/proper_files/'):
-        if file not in renamed_files:
+        if (file not in renamed_files) or (timestamp in renamed_files[file]):
             ElementTree.register_namespace('', "http://www.loc.gov/MARC21/slim")
             result_tree = ElementTree.parse('W:/FID-Projekte/Team Retro-Scan/Zotero/proper_files/' + file)
             result_root = result_tree.getroot()
@@ -32,7 +32,6 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/files_rename
             copy2('W:/FID-Projekte/Team Retro-Scan/Zotero/proper_files/' + file, 'W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/' + new_filename_for_ftp)
             renamed_files[file] = new_filename_for_ftp
             move_to_scp_server += '\npython3 upload_to_bsz_ftp_server.py ' + new_filename_for_ftp + ' /pub/UBTuebingen_Default_Test/'
-
 with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/files_renamed.json', 'w') as renamed_files_file:
     json.dump(renamed_files, renamed_files_file)
 

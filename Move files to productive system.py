@@ -21,7 +21,7 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_ProduktivDB/files_r
         if '.xml' not in file:
             print(file)
             continue
-        if file not in renamed_files:
+        if (file not in renamed_files) or (timestamp in renamed_files[file]):
             ElementTree.register_namespace('', "http://www.loc.gov/MARC21/slim")
             result_tree = ElementTree.parse('W:/FID-Projekte/Team Retro-Scan/Zotero/final_files/' + file)
             result_root = result_tree.getroot()
