@@ -15,7 +15,8 @@ def get_reviews_from_jstor(zeder_id, jstor_zeder_id):
     for record in brill_records:
         title = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="245"]'
                             '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text
-        if re.findall(r'^(?:books?\s+)?reviews?$', title, flags=re.IGNORECASE):
+        # Change regex for Review Section here:
+        if re.findall(r'^notices?\s+bibliographique', title, flags=re.IGNORECASE):
             print(title)
             source = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="773"]'
                                 '/{http://www.loc.gov/MARC21/slim}subfield[@code="g"]').text
@@ -28,7 +29,6 @@ def get_reviews_from_jstor(zeder_id, jstor_zeder_id):
                         print(source, jstor_source)
                         for field in jstor_record.findall('{http://www.loc.gov/MARC21/slim}datafield[@tag="650"]'):
                             jstor_record.remove(field)
-                        print(jstor_record.findall('{http://www.loc.gov/MARC21/slim}datafield[@tag="650"]'))
                         for field in jstor_record.findall('{http://www.loc.gov/MARC21/slim}datafield[@tag="856"]'):
                             jstor_record.remove(field)
                         for field in jstor_record.findall('{http://www.loc.gov/MARC21/slim}datafield[@tag="URL"]'):
