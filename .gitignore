@@ -26,3 +26,4 @@ replacement_regexes.txt
 unused_scripts
 present_records.json
 .idea
+statistics_*.txt
