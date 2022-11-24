@@ -32,7 +32,10 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_ProduktivDB/files_r
                 continue
             file_nr_for_filename += 1
             file_nr += 1
-            new_filename_for_ftp = 'ixtheo_zotero_' + timestamp + '_' + str(file_nr_for_filename).zfill(3) + '.xml'
+            if timestamp in renamed_files[file]:
+                new_filename_for_ftp = renamed_files[file]
+            else:
+                new_filename_for_ftp = 'ixtheo_zotero_' + timestamp + '_' + str(file_nr_for_filename).zfill(3) + '.xml'
             copy2('W:/FID-Projekte/Team Retro-Scan/Zotero/final_files/' + file, 'W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_ProduktivDB/' + new_filename_for_ftp)
             renamed_files[file] = new_filename_for_ftp
             move_to_scp_server += '\npython3 upload_to_bsz_ftp_server.py ' + new_filename_for_ftp + ' /pub/UBTuebingen_Default/'
