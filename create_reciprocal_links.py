@@ -65,7 +65,12 @@ def get_ppns_for_reciprocal_links(zeder_id, journal_ppn):
     if file in os.listdir('final_additional_information'):
         with open('final_additional_information/' + file, 'r') as ppns_linked_file:
             ppns_linked = json.load(ppns_linked_file)
+            ppn_nr = 0
+            total_ppn_nr = len(ppns_linked)
             for ppn in ppns_linked:
+                ppn_nr += 1
+                if ppn_nr % 150 == 0:
+                    print(int((ppn_nr/total_ppn_nr)*100), '% der Datensätze verarbeitet')
                 review_ppn = search_review(ppn, journal_ppn)
                 if review_ppn is not None:
                     ixtheo = False
