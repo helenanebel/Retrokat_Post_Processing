@@ -9,7 +9,12 @@ from create_publisher_url_dict import get_url_dict
 # Funktion, um die Inhalte zweier Issue-Dictionaries zu matchen.
 def match_issue_dicts(jstor_mapping_dict, publisher_issue_dict, jstor_issue_dict, total_nr, total_matches):
     # print(total_matches)
+    publisher_issue_dict = {re.sub(r'[^\divxlIVXL-]', '', pagination): publisher_issue_dict[pagination] for pagination in publisher_issue_dict}
     for pagination in publisher_issue_dict:
+        if pagination == "ll":
+            total_nr += 1
+            continue
+        pagination = re.sub(r'[^\divxlIVXL-]', '', pagination)
         if pagination in jstor_issue_dict:
             # prüfen, ob nur ein Artikel mit dieser Seitennummerierung erschienen ist
             if len(jstor_issue_dict[pagination]) == 1:
@@ -64,15 +69,21 @@ def match_issue_dicts(jstor_mapping_dict, publisher_issue_dict, jstor_issue_dict
             total_nr += 1
             pagination_found = False
             # unerwünschte Zeichen in der Seitennummerierung entfernen
-            for p in [p.replace('*', '') for p in jstor_issue_dict if
-                      re.findall(r'^' + p.replace('*', '').split('-')[0] + '-', pagination)]:
+            old_dict = jstor_issue_dict
+            jstor_issue_dict = {re.sub(r'[^\divxlIVXL-]', '', p): jstor_issue_dict[p] for p in jstor_issue_dict}
+            for p in jstor_issue_dict:
                 try:
                     # Berechnung der Differenz der letzten angegebenen Seitenzahlen
-                    if '-' in p:
+                    if '-' in p and '-' in pagination:
                         difference = abs(int(p.split('-')[1]) - int(pagination.split('-')[1]))
-                    else:
+                    elif '-' in pagination:
                         difference = abs(int(p) - int(pagination.split('-')[1]))
+                    elif '-' in p:
+                            difference = abs(int(p.split('-')[1]) - int(pagination))
+                    else:
+                        difference = abs(int(p) - int(pagination))
                     if difference <= 5:
+                        p = p.replace('*', '')
                         if len(jstor_issue_dict[p]) == 1:
                             for author in jstor_issue_dict[p]:
                                 total_nr += len(

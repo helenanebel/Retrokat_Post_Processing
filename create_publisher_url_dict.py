@@ -82,6 +82,7 @@ def get_url_dict(zeder_id: str):
             issue = 'nn'
         pagination = get_subfield(record, '936', 'h')
         if pagination:
+            pagination = re.sub(r'[^\divxlIVXL-]', '', pagination)
             if '-' in pagination:
                 if re.findall(r'\d+', pagination) and re.findall(r'[A-Za-z]', pagination):
                     pagination = re.sub(r'(\d+).+?(\d+)', r'\1-\2', pagination)
