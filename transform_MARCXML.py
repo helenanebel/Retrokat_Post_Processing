@@ -56,18 +56,15 @@ def check_abstract(record):
         if re.search(r'^.{0,125}Article .+ was published on .+ in the journal .+ (.+).', abstract_tag.text, re.IGNORECASE):
             abstract_tags = get_fields(record, '520')
             for abstract_tag in abstract_tags:
-                # print('deleted abstract-tag')
                 record.remove(abstract_tag)
         elif re.search \
                 (r'^.{0,125},\s+Volume\s+(os-)?(\d+|[CcLlXxVvIi]+),\s+Issue\s+[\d–\-/CcLlXxVvIi]+,\s+.+,\s+Pages(\s+[\dCcLlXxVvIi]+[\d–a-zA-Z]*,)?', abstract_tag.text, re.IGNORECASE):
             abstract_tags = get_fields(record, '520')
             for abstract_tag in abstract_tags:
-                # print('deleted abstract-tag')
                 record.remove(abstract_tag)
         if re.search(r'^No\s+Abstract', abstract_tag.text, re.IGNORECASE):
             abstract_tags = get_fields(record, '520')
             for abstract_tag in abstract_tags:
-                # print('deleted abstract-tag')
                 record.remove(abstract_tag)
         elif 60 < len(abstract_tag.text) < 150:
             pass
@@ -415,28 +412,43 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                                 record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
                                             '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
                             pagination_tag.text = fpage
+                    elif re.findall(r'(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)-\d+', pagination):
+                        new_pagination = []
+                        int_page = re.findall(r'-(\d+)', pagination)[0]
+                        for pag in re.findall(r'(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)', pagination):
+                            new_pagination.append(str(from_roman(pag)))
+                        new_pagination.append(int_page)
+                        print('converted', new_pagination, 'from roman number', pagination)
+                        pagination = '-'.join(new_pagination)
+                        pagination_tag = \
+                            record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
+                                        '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
+                        pagination_tag.text = pagination
+                        differences_from_source = True
+
                     elif re.findall(r'(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)', pagination):
                         new_pagination = []
                         for pag in re.findall(r'(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)', pagination):
                             new_pagination.append(str(from_roman(pag)))
+                        print('converted', new_pagination, 'from roman number', pagination)
                         pagination = '-'.join(new_pagination)
                         pagination_tag = \
                             record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
                                         '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
                         pagination_tag.text = pagination
                         differences_from_source = True
-                        print(pagination)
+
                     elif re.findall(r'(?=[mdclxvi])m*(?:c[md]|d?c*)(?:x[cl]|l?x*)(?:i[xv]|v?i*)', pagination):
                         new_pagination = []
                         for pag in re.findall(r'(?=[mdclxvi])m*(?:c[md]|d?c*)(?:x[cl]|l?x*)(?:i[xv]|v?i*)', pagination):
                             new_pagination.append(str(from_roman(pag)))
+                        print('converted', new_pagination, 'from roman number', pagination)
                         pagination = '-'.join(new_pagination)
                         pagination_tag = \
                             record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
                                         '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
                         pagination_tag.text = pagination
                         differences_from_source = True
-                        print(pagination)
                     else:
                         arabic_page_numbers = []
                         paginations = pagination.split('-')
@@ -455,18 +467,16 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                                                        'subfields': {'a': ['heb']}})
                             differences_from_source = True
                 elif re.findall(r'(?i)(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)', pagination):
-                    print(pagination)
                     new_pagination = []
                     for pag in re.findall(r'(?i)(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)', pagination.upper()):
                         new_pagination.append(str(from_roman(pag)))
+                    print('converted', new_pagination, 'from roman number', pagination)
                     pagination = '-'.join(new_pagination)
                     pagination_tag = \
                         record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="936"]'
                                     '/{http://www.loc.gov/MARC21/slim}subfield[@code="h"]')
                     pagination_tag.text = pagination
                     differences_from_source = True
-                    print("set differences_from_source for", url)
-                    print(pagination)
                 elif not re.findall(r'\d+', pagination):
                     append_to_postprocess = True
             else:
@@ -678,6 +688,8 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                                                    'subfields': {'a': ['Rezension'],
                                                                  '0': ['(DE-588)4049712-4', '(DE-627)106186019'],
                                                                  '2': ['gnd-content']}})
+                        is_review = True
+
             elif form_tag.text == "Rezension":
                 is_review = True
             records_found, review_title = create_review_link(record)
@@ -693,7 +705,13 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                         create_marc_field(record, {'tag': '246', 'ind1': '1', 'ind2': ' ',
                                                    'subfields': {'a': [review_title], 'i': ['Fingierter Rezensionstitel: ']}})
                 if not records_found:
-                    isbn_list = re.findall(r'[^\d]((?:\d{3}[\- ])?(?:\d[\-]?[\s]?){8,9}[\dXx])', title)
+                    abstract_tag = record.find \
+                        ('{http://www.loc.gov/MARC21/slim}datafield[@tag="520"]/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')
+                    if abstract_tag is not None:
+                        abstract = abstract_tag.text
+                    else:
+                        abstract = ""
+                    isbn_list = list(set(re.findall(r'[^\d]((?:\d{3}[\- ])?(?:\d[\-]?[\s]?){8,9}[\dXx])', title) + re.findall(r'[^\d]((?:\d{3}[\- ])?(?:\d[\-]?[\s]?){8,9}[\dXx])', abstract)))
                     for isbn in isbn_list:
                         isbn = re.sub(r'[\- ]', '', isbn)
                         records_found = search_publication_with_isbn(isbn)
@@ -787,6 +805,13 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
             else:
                 proper_root.append(record)
                 proper_nr += 1
+            if len(record.findall('{http://www.loc.gov/MARC21/slim}datafield[@tag="655"][@ind2="7"]'
+                                   '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]')) > 1:
+                for form_tag in record.findall('{http://www.loc.gov/MARC21/slim}datafield[@tag="655"][@ind2="7"]'
+                                       '/{http://www.loc.gov/MARC21/slim}subfield[@code="a"]'):
+                    print(url)
+                    record.remove(form_tag)
+
     if links_to_add_nr > 0:
         with open('W:/FID-Projekte/Team Retro-Scan/Zotero/missing_links/' + zeder_id + '_links_to_add.json', 'w', newline='') as links_to_add_file:
             json.dump(links_to_add, links_to_add_file)
