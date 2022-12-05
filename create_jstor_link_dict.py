@@ -4,6 +4,7 @@ import sys
 import os
 from create_jstor_url_dict import create_jstor_url_dict
 from create_publisher_url_dict import get_url_dict
+from convert_roman_numbers import from_roman
 
 
 # Funktion, um die Inhalte zweier Issue-Dictionaries zu matchen.
@@ -71,6 +72,27 @@ def match_issue_dicts(jstor_mapping_dict, publisher_issue_dict, jstor_issue_dict
             # unerwünschte Zeichen in der Seitennummerierung entfernen
             old_dict = jstor_issue_dict
             jstor_issue_dict = {re.sub(r'[^\divxlIVXL-]', '', p): jstor_issue_dict[p] for p in jstor_issue_dict}
+            pop_keys = {}
+            for p in jstor_issue_dict:
+                if re.findall(r'(?i)(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)-\d+', p):
+                    new_pagination = []
+                    int_page = re.findall(r'-(\d+)', p)[0]
+                    for pag in re.findall(r'(?i)(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)', p):
+                        new_pagination.append(str(from_roman(pag)))
+                    new_pagination.append(int_page)
+                    new_pagination = '-'.join(new_pagination)
+                    print('converted', new_pagination, 'from roman number', p)
+                    pop_keys[p] = new_pagination
+                elif re.findall(r'(?i)(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)', p):
+                    new_pagination = []
+                    for pag in re.findall(r'(?i)(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)', p):
+                        new_pagination.append(str(from_roman(pag)))
+                    new_pagination = '-'.join(new_pagination)
+                    print('converted', new_pagination, 'from roman number', p)
+                    pop_keys[p] = new_pagination
+            for pop_key in pop_keys:
+                jstor_issue_dict[pop_keys[pop_key]] = jstor_issue_dict[pop_key]
+                jstor_issue_dict.pop(pop_key)
             for p in jstor_issue_dict:
                 try:
                     # Berechnung der Differenz der letzten angegebenen Seitenzahlen
