@@ -82,14 +82,22 @@ def get_url_dict(zeder_id: str):
             issue = 'nn'
         pagination = get_subfield(record, '936', 'h')
         if pagination:
-            pagination = re.sub(r'[^\divxlIVXL-]', '', pagination)
-            if '-' in pagination:
-                if re.findall(r'\d+', pagination) and re.findall(r'[A-Za-z]', pagination):
-                    pagination = re.sub(r'(\d+).+?(\d+)', r'\1-\2', pagination)
-                if re.findall(r'(\d+)-(\d+)', pagination):
-                    fpage, lpage = re.findall(r'(\d+)-(\d+)', pagination)[0]
-                    if fpage == lpage:
-                        pagination = fpage
+            if re.findall(r'(?i)(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)-\d+', pagination):
+                new_pagination = []
+                int_page = re.findall(r'-(\d+)', pagination)[0]
+                for pag in re.findall(r'(?i)(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)', pagination):
+                    new_pagination.append(str(from_roman(pag)))
+                new_pagination.append(int_page)
+                new_pagination = '-'.join(new_pagination)
+                print('converted', new_pagination, 'from roman number', pagination)
+                pagination = new_pagination
+            elif re.findall(r'(?i)(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)', pagination):
+                new_pagination = []
+                for pag in re.findall(r'(?i)(?=[MDCLXVI])M*(?:C[MD]|D?C*)(?:X[CL]|L?X*)(?:I[XV]|V?I*)', pagination):
+                    new_pagination.append(str(from_roman(pag)))
+                new_pagination = '-'.join(new_pagination)
+                print('converted', new_pagination, 'from roman number', pagination)
+                pagination = new_pagination
         responsibles = [field.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text for field in get_fields(record, '100') + get_fields(record, '700')]
         author = 'nn'
         if responsibles:
