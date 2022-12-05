@@ -28,6 +28,11 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/files_rename
                 continue
             file_nr_for_filename += 1
             file_nr += 1
+            if file in renamed_files:
+                if timestamp in renamed_files[file]:
+                    new_filename_for_ftp = renamed_files[file]
+            else:
+                new_filename_for_ftp = 'ixtheo_zotero_' + timestamp + '_' + str(file_nr_for_filename).zfill(3) + '.xml'
             new_filename_for_ftp = 'ixtheo_zotero_' + timestamp + '_' + str(file_nr_for_filename).zfill(3) + '.xml'
             copy2('W:/FID-Projekte/Team Retro-Scan/Zotero/proper_files/' + file, 'W:/FID-Projekte/Team Retro-Scan/Zotero/Einspielen_TestDB/' + new_filename_for_ftp)
             renamed_files[file] = new_filename_for_ftp
