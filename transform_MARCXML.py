@@ -734,7 +734,7 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                     create_marc_field(record, {'tag': '887', 'ind1': ' ', 'ind2': ' ',
                                                'subfields': {'a': [comment], '2': ['ixzom']}})
             language_tag = record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]')
-            if not language_tag:
+            if language_tag is None:
                 detected_lang = detect_title(title)
                 if detected_lang in conf_langs:
                     if "[Rezension von: " not in title and "(Book Review)" not in title:
@@ -760,10 +760,11 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
                     if detected_lang in conf_langs and "[Rezension von: " not in title:
                         language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = detected_lang
                     else:
-                        print("no language:", title)
+
                         if default_lang != "":
                             language_tag.find('{http://www.loc.gov/MARC21/slim}subfield[@code="a"]').text = default_lang
                         else:
+                            print("no language:", title)
                             record.remove(record.find('{http://www.loc.gov/MARC21/slim}datafield[@tag="041"]'))
                             create_marc_field(record, {'tag': '935', 'ind1': ' ', 'ind2': ' ',
                                                        'subfields': {'a': ['nbrk'], '2': ['LOK']}})
@@ -844,8 +845,11 @@ def transform(zeder_id: str, exclude: list[str], volumes_to_catalogue: list[int]
             journal_title = record.find('datafield', tag='021A').find('subfield', code='a').text
             if record.find('datafield', tag='002@').find('subfield', code='0').text == 'Obv':
                 input('Der Titel lautet: ' + journal_title + ', es handelt sich um eine Online-Aufnahme')
+                statistics_file.write('Der Titel lautet: ' + journal_title + ', es handelt sich um eine Online-Aufnahme' + '\n')
             else:
                 input('Der Titel lautet: ' + journal_title + ', es handelt sich NICHT um eine Online-Aufnahme')
+                statistics_file.write(
+                    'Der Titel lautet: ' + journal_title + ', es handelt sich NICHT um eine Online-Aufnahme' + '\n')
         statistics_file.write('total number of records harvested:' + str(record_nr) + '\n')
         statistics_file.write('proper:' + str(proper_nr) + '\n')
         statistics_file.write('post_process:' + str(post_process_nr) + '\n')
