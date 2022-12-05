@@ -157,32 +157,35 @@ with open('W:/FID-Projekte/Team Retro-Scan/Zotero/BENU/start_harvests.sh', 'w', 
                             print(muse_conf)
                         harvesting_command = raw_harvesting_command_article_download.format(zid, zid + '_' + str(vr_nr), title, BENU_username)
                         sh_file.write('wait;' + harvesting_command)
-                        if do_harvest == ['333']:
-                            sh_file.write('wait; sleep 4s;\n')
-                            waiting_time += 4
-                        if do_harvest == ['333']:
-                            if conf_nr != 0:
-                                if "dialnet.unirioja.es" in article_link:
-                                    if conf_nr % 15 == 0:
-                                        sh_file.write('wait; sleep 20m;\n')
-                                        waiting_time += 1200
-                                elif "journals.uchicago.edu" in article_link:
-                                    if conf_nr % 3000 == 0:
-                                        sh_file.write('wait; sleep 20m;\n')
-                                        waiting_time += 1200
-                                elif "muse.jhu.edu" in article_link:
-                                    total_muse_nr += 1
-                                    if total_muse_nr % 400 == 0:
-                                        sh_file.write('wait; sleep 10h;\n')
-                                        waiting_time += 36000
-                                elif "brill.com/" in article_link:
-                                    if conf_nr % 400 == 0:
-                                        sh_file.write('wait; sleep 30m;\n')
-                                        waiting_time += 1800
-                                    elif conf_nr % 100 == 0:
-                                        sh_file.write('wait; sleep 5m;\n')
-                                        waiting_time += 300
-                                # sh_file.write('wait; sudo systemctl restart zts;\n')
+                        if conf_nr != 0:
+                            if "dialnet.unirioja.es" in article_link:
+                                sh_file.write('wait; sleep 4s;\n')
+                                waiting_time += 4
+                                if conf_nr % 15 == 0:
+                                    sh_file.write('wait; sleep 20m;\n')
+                                    waiting_time += 1200
+                            elif "journals.uchicago.edu" in article_link:
+                                sh_file.write('wait; sleep 4s;\n')
+                                waiting_time += 4
+                                if conf_nr % 3000 == 0:
+                                    sh_file.write('wait; sleep 20m;\n')
+                                    waiting_time += 1200
+                            elif "muse.jhu.edu" in article_link:
+                                sh_file.write('wait; sleep 4s;\n')
+                                waiting_time += 4
+                                total_muse_nr += 1
+                                if total_muse_nr % 400 == 0:
+                                    sh_file.write('wait; sleep 10h;\n')
+                                    waiting_time += 36000
+                            elif "brill.com/" in article_link:
+                                sh_file.write('wait; sleep 4s;\n')
+                                waiting_time += 4
+                                if conf_nr % 400 == 0:
+                                    sh_file.write('wait; sleep 30m;\n')
+                                    waiting_time += 1800
+                                elif conf_nr % 100 == 0:
+                                    sh_file.write('wait; sleep 5m;\n')
+                                    waiting_time += 300
                         conf_nr += 1
                     raw_download_command_article_download = 'scp -r {1}@benu.ub.uni-tuebingen.de:/home/{1}/{0}/ixtheo {0}\n'
                     download_command = raw_download_command_article_download.format(zid, BENU_username)
